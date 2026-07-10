@@ -15,9 +15,9 @@ serve(async (req) => {
     const payload = await req.json()
     const { email, first_name_en, last_name_en, id } = payload
 
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-    if (!RESEND_API_KEY) {
-      throw new Error('Missing RESEND_API_KEY environment variable')
+    const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
+    if (!BREVO_API_KEY) {
+      throw new Error('Missing BREVO_API_KEY environment variable in Supabase')
     }
 
     // HTML email body with UEC styling and student details
@@ -59,24 +59,33 @@ serve(async (req) => {
       </div>
     `
 
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'api-key': BREVO_API_KEY,
       },
       body: JSON.stringify({
-        from: 'UEC Admissions <admissions@uec.edu.eg>',
-        to: email,
+        sender: {
+          name: 'UEC Admissions',
+          email: 'uuecadmission@gmail.com',
+        },
+        to: [
+          {
+            email: email,
+            name: `${first_name_en} ${last_name_en}`,
+          }
+        ],
         subject: `UEC Admission Application Received - ID: ${id}`,
-        html: emailHtml,
+        htmlContent: emailHtml,
       }),
     })
 
     const resData = await res.json()
 
     if (!res.ok) {
-      throw new Error(`Resend API error: ${JSON.stringify(resData)}`)
+      throw new Error(`Brevo API error: ${JSON.stringify(resData)}`)
     }
 
     return new Response(
