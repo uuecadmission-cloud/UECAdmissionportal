@@ -5375,20 +5375,7 @@
         document.getElementById('admin-login-modal').classList.add('hidden');
         showAdmin();
       } catch (err) {
-        // Fallback: If login failed, automatically sign up the user to make deployment seamless
-        try {
-          const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-            email: user,
-            password: pass
-          });
-          if (signUpError) throw signUpError;
-          
-          isAdminAuthenticated = true;
-          document.getElementById('admin-login-modal').classList.add('hidden');
-          showAdmin();
-        } catch (signUpErr) {
-          errEl.textContent = 'Authentication failed: ' + err.message;
-        }
+        errEl.textContent = 'Authentication failed: ' + err.message;
       }
     }
 
