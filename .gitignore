@@ -1,0 +1,6 @@
+# Exclude credentials and doc/zip backups in the admission form folder
+Keys and passwords/
+Admission form modification*
+*.zip
+*.docx
+*.xlsx
