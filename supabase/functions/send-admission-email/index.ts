@@ -165,7 +165,7 @@ serve(async (req) => {
       body: JSON.stringify({
         sender: {
           name: 'UEC Admissions',
-          email: 'uuecadmission@gmail.com',
+          email: 'enrol@uec.edu.eg',
         },
         to: [
           {
