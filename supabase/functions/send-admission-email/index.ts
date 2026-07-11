@@ -452,15 +452,18 @@ serve(async (req) => {
 
     // Attempt to sync the lead to EspoCRM asynchronously in the background.
     // Wrap it in a try-catch so CRM sync issues never block the client-side success screen.
+    let crmResult = false;
+    let crmError = null;
     try {
         console.log('[CRM Sync] Triggering background sync to EspoCRM...');
-        await syncLeadToEspoCRM(payload);
+        crmResult = await syncLeadToEspoCRM(payload);
     } catch (crmErr) {
+        crmError = crmErr.message;
         console.error('[CRM Sync] Failed to sync to EspoCRM:', crmErr);
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Email sent successfully', data: resData }),
+      JSON.stringify({ success: true, message: 'Email sent successfully', data: resData, crmResult, crmError }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
