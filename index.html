@@ -2349,7 +2349,10 @@
     <div class="modal-card" style="max-width: 800px; width:90%; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
       <div style="display:flex; justify-content:space-between; align-items:center; padding: 24px 30px 14px; border-bottom: 0.5px solid var(--border-light);">
         <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--navy); margin:0;" id="details-title">Application Details</h3>
-        <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);" onclick="closeAdminDetails()">Close ✕</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="crm-sync-btn" class="btn btn-gold" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer;">Sync to CRM 🔄</button>
+          <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);" onclick="closeAdminDetails()">Close ✕</button>
+        </div>
       </div>
       
       <div style="flex: 1; overflow-y: auto; padding: 20px 30px 30px;" id="details-content">
@@ -5436,10 +5439,90 @@
       document.getElementById('admin-details-modal').classList.add('hidden');
     }
 
+    async function syncApplicationToCRM(id, btn) {
+      const app = applications.find(x => x.id === id);
+      if (!app || !app.raw) return;
+      const r = app.raw;
+
+      btn.disabled = true;
+      btn.textContent = 'Syncing...';
+      
+      try {
+        const payload = {
+          id: r.application_id,
+          first_name_en: r.name_en_first,
+          second_name_en: r.name_en_second,
+          third_name_en: r.name_en_third,
+          last_name_en: r.name_en_last,
+          first_name_ar: r.name_ar_first,
+          second_name_ar: r.name_ar_second,
+          third_name_ar: r.name_ar_third,
+          last_name_ar: r.name_ar_last,
+          email: r.email,
+          mobile: r.mobile,
+          pref1: r.pref1,
+          pref2: r.pref2,
+          pref3: r.pref3,
+          applicant_type: r.applicant_type,
+          intake: r.intake,
+          edu_system: r.edu_system,
+          school_name: r.school_name,
+          school_name_other: r.school_name_other,
+          cert_country: r.cert_country,
+          grad_year: r.grad_year,
+          score: r.score,
+          seat_number: r.seat_number,
+          transport_facility: r.transport_facility,
+          siblings_enrolled: r.siblings_enrolled,
+          sibling_id: r.sibling_id,
+          father_name: r.father_name,
+          father_mobile: r.father_mobile,
+          father_occupation: r.father_occupation,
+          mother_name: r.mother_name,
+          mother_mobile: r.mother_mobile,
+          mother_occupation: r.mother_occupation,
+          hear_about_us: r.hear_about_us ? (Array.isArray(r.hear_about_us) ? r.hear_about_us : [r.hear_about_us]) : []
+        };
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-admission-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          btn.textContent = '✓ Synced to CRM';
+          btn.style.backgroundColor = 'var(--success)';
+          btn.style.color = '#fff';
+          alert('Successfully synchronized with EspoCRM!');
+        } else {
+          throw new Error(data.error || 'Server error');
+        }
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.textContent = 'Sync to CRM 🔄';
+        alert('Failed to sync: ' + err.message);
+      }
+    }
+
     function showApplicationDetails(id) {
       const app = applications.find(x => x.id === id);
       if (!app || !app.raw) return;
       const r = app.raw;
+
+      const syncBtn = document.getElementById('crm-sync-btn');
+      if (syncBtn) {
+        syncBtn.onclick = () => syncApplicationToCRM(app.id, syncBtn);
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'Sync to CRM 🔄';
+        syncBtn.style.backgroundColor = '';
+        syncBtn.style.color = '';
+      }
       
       const content = document.getElementById('details-content');
       document.getElementById('details-title').textContent = `Application Details: ${r.application_id}`;
