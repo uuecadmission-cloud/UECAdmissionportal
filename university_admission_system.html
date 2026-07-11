@@ -5548,7 +5548,7 @@
         const { error } = await supabaseClient
           .from('applications')
           .update(updatedFields)
-          .eq('application_id', id);
+          .eq('id', id);
 
         if (error) {
           if (error.message.includes('admin_notes') || error.message.includes('column')) {
@@ -5557,7 +5557,7 @@
             const { error: retryError } = await supabaseClient
               .from('applications')
               .update(updatedFields)
-              .eq('application_id', id);
+              .eq('id', id);
             
             if (retryError) throw retryError;
             alert('Changes saved successfully! (Note: admin_notes was NOT saved because you need to create the admin_notes column in Supabase).');
@@ -5919,7 +5919,7 @@
         const { error } = await supabaseClient
           .from('applications')
           .update({ status: nextStatus })
-          .eq('application_id', id);
+          .eq('id', id);
         
         if (error) throw error;
         
