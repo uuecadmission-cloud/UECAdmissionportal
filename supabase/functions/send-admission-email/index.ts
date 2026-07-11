@@ -194,6 +194,7 @@ Name (AR): ${arabicName || 'None'}
 Email: ${payload.email || 'no-email'}
 Phone: ${payload.mobile || 'no-phone'}
 Application ID: ${payload.id}
+Portal Source: Admission Form
 Faculty Preference 1: ${payload.pref1 || 'Unspecified'}
 Faculty Preference 2: ${payload.pref2 || 'Unspecified'}
 Faculty Preference 3: ${payload.pref3 || 'Unspecified'}
@@ -220,7 +221,7 @@ How Did You Hear: ${(payload.hear_about_us || []).join(', ') || 'Unspecified'}`;
             emailAddress: payload.email || '',
             phoneNumber: formatPhoneNumber(payload.mobile),
             status: 'New',
-            source: 'Admission Form', // Distinct tag to prevent conflict
+            source: 'Web Site', // Set to standard option to pass validation
             description
         };
 
