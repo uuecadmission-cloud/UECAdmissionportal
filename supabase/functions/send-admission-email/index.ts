@@ -1,8 +1,256 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import crypto from "node:crypto"
+import { Buffer } from "node:buffer"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// In-memory cache for the bypassed cookie and timestamp
+let cachedCookie: string | null = null;
+let lastSolved: number = 0;
+
+/**
+ * Parse a byte-array variable assignment from JavaScript source.
+ * Matches patterns like: var a=[1,2,3,...];
+ */
+function parseByteArray(script: string, varName: string): Buffer {
+    const toNumbersMatch = script.match(new RegExp(`(?:var\\s+)?${varName}\\s*=\\s*toNumbers\\s*\\(\\s*["']([0-9a-fA-F]+)["']\\s*\\)`));
+    if (toNumbersMatch) {
+        return Buffer.from(toNumbersMatch[1], 'hex');
+    }
+
+    const arrayMatch = script.match(new RegExp(`(?:var\\s+)?${varName}\\s*=\\s*\\[([^\\]]+)\\]`));
+    if (arrayMatch) {
+        const bytes = arrayMatch[1].split(',').map(s => parseInt(s.trim(), 10));
+        return Buffer.from(bytes);
+    }
+
+    throw new Error(`Could not parse variable '${varName}' from challenge script`);
+}
+
+function toHex(bytes: number[]): string {
+    return bytes.map(b => (b & 0xFF).toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Challenge solver for InfinityFree firewall
+ */
+async function getBypassCookie(baseUrl: string): Promise<string> {
+    const now = Date.now();
+    if (cachedCookie && (now - lastSolved < 5 * 60 * 60 * 1000)) {
+        return cachedCookie;
+    }
+
+    try {
+        console.log('[CRM Bypass] Fetching page to trigger anti-bot challenge...');
+        const res = await fetch(`${baseUrl}/api/v1/Lead`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+        const html = await res.text();
+
+        if (!html.includes('__test')) {
+            console.log('[CRM Bypass] No challenge page found, returned direct content.');
+            return '';
+        }
+
+        console.log('[CRM Bypass] Challenge detected! Solving with crypto...');
+
+        const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+        if (!scriptMatch) {
+            throw new Error('Could not find script block in challenge page');
+        }
+
+        const script = scriptMatch[1];
+
+        const key = parseByteArray(script, 'a');
+        const iv = parseByteArray(script, 'b');
+        const ciphertext = parseByteArray(script, 'c');
+
+        const algorithm = key.length === 32 ? 'aes-256-cbc' : 'aes-128-cbc';
+        const decipher = crypto.createDecipheriv(algorithm, key, iv);
+        decipher.setAutoPadding(false);
+
+        const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        const cookieValue = toHex(Array.from(decrypted));
+
+        if (!cookieValue) {
+            throw new Error('Failed to solve challenge (cookieValue is empty)');
+        }
+
+        cachedCookie = `__test=${cookieValue}`;
+        lastSolved = Date.now();
+        console.log('[CRM Bypass] Solved successfully! Cookie cached.');
+        return cachedCookie;
+    } catch (error) {
+        console.error('[CRM Bypass] Error solving anti-bot challenge:', error);
+        throw error;
+    }
+}
+
+/**
+ * Custom authenticated fetch wrapper for EspoCRM
+ */
+async function fetchEspo(url: string, options: RequestInit = {}): Promise<Response> {
+    const baseUrl = Deno.env.get('ESPOCRM_URL') || 'http://uec-admissions.infinityfreeapp.com';
+    const espoUser = Deno.env.get('ESPOCRM_USERNAME') || 'uec_admin';
+    const espoPass = Deno.env.get('ESPOCRM_PASSWORD') || 'ahmeduec123';
+
+    const authHeader = 'Basic ' + Buffer.from(`${espoUser}:${espoPass}`).toString('base64');
+    let cookie = await getBypassCookie(baseUrl);
+
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'X-Skip-Duplicate-Check': 'true',
+        ...(options.headers as Record<string, string>)
+    };
+
+    if (cookie) {
+        headers['Cookie'] = cookie;
+    }
+
+    let res = await fetch(url, { ...options, headers });
+    const bodyText = await res.clone().text();
+
+    if (bodyText.includes('__test')) {
+        console.log('[CRM Bypass] Cookie expired or challenged. Resolving again...');
+        cachedCookie = null;
+        cookie = await getBypassCookie(baseUrl);
+        headers['Cookie'] = cookie;
+        res = await fetch(url, { ...options, headers });
+    }
+
+    return res;
+}
+
+/** Sanitize phone number for EspoCRM requirements */
+function formatPhoneNumber(phone: string | null | undefined): string {
+    if (!phone) return '';
+    let cleaned = phone.trim().replace(/[\s\-\(\)]/g, '');
+
+    if (cleaned.startsWith('+')) return cleaned;
+    if (cleaned.startsWith('00')) return '+' + cleaned.slice(2);
+
+    if (cleaned.startsWith('01') && cleaned.length === 11) return '+2' + cleaned;
+    if (cleaned.startsWith('1') && cleaned.length === 10) return '+20' + cleaned;
+
+    const commonCountryCodes = ['20', '966', '971', '965', '974', '973', '968', '962', '961', '212', '216', '218', '249', '964', '963', '967'];
+    for (const code of commonCountryCodes) {
+        if (cleaned.startsWith(code)) return '+' + cleaned;
+    }
+
+    if (cleaned.startsWith('05') && cleaned.length === 10) return '+966' + cleaned.slice(1);
+
+    if (cleaned.startsWith('0')) {
+        if (cleaned.length === 11) return '+2' + cleaned;
+        return '+' + cleaned;
+    }
+
+    return '+' + cleaned;
+}
+
+/** Primary entrypoint to sync student application to EspoCRM */
+async function syncLeadToEspoCRM(payload: any): Promise<boolean> {
+    const baseUrl = Deno.env.get('ESPOCRM_URL') || 'http://uec-admissions.infinityfreeapp.com';
+
+    try {
+        const studentName = `${payload.first_name_en || ''} ${payload.second_name_en || ''} ${payload.third_name_en || ''} ${payload.last_name_en || ''}`.trim() || 'Prospect';
+        console.log(`[CRM Sync] Initiating sync for: ${studentName}`);
+
+        const nameParts = studentName.split(/\s+/);
+        const firstName = nameParts[0] || 'Prospect';
+        const lastName = nameParts.slice(1).join(' ') || 'Prospect';
+
+        const arabicName = `${payload.first_name_ar || ''} ${payload.second_name_ar || ''} ${payload.third_name_ar || ''} ${payload.last_name_ar || ''}`.trim();
+        const originalDate = new Date().toUTCString().replace('GMT', 'UTC');
+
+        const description = `[Registered: ${originalDate}]
+
+Name (EN): ${studentName}
+Name (AR): ${arabicName || 'None'}
+Email: ${payload.email || 'no-email'}
+Phone: ${payload.mobile || 'no-phone'}
+Application ID: ${payload.id}
+Faculty Preference 1: ${payload.pref1 || 'Unspecified'}
+Faculty Preference 2: ${payload.pref2 || 'Unspecified'}
+Faculty Preference 3: ${payload.pref3 || 'Unspecified'}
+Applicant Type: ${payload.applicant_type || 'new'}
+Intake: ${payload.intake || 'Unspecified'}
+Education System: ${payload.edu_system || 'Unspecified'}
+School Name: ${payload.school_name === 'Other' ? payload.school_name_other : payload.school_name}
+Certificate Country: ${payload.cert_country || 'N/A'}
+Graduation Year: ${payload.grad_year || 'Unspecified'}
+Final Score: ${payload.score || 'Unspecified'}%
+Seat Number: ${payload.seat_number || 'Unspecified'}
+Transportation Needed: ${payload.transport_facility || 'no'}
+Siblings Enrolled: ${payload.siblings_enrolled === 'yes' ? `Yes (ID: ${payload.sibling_id})` : 'No'}
+Father Name: ${payload.father_name || 'Unspecified'}
+Father Phone: ${payload.father_mobile || 'Unspecified'}
+Father Job Sector: ${payload.father_occupation || 'Unspecified'}
+Mother Name: ${payload.mother_name || 'Unspecified'}
+Mother Phone: ${payload.mother_mobile || 'Unspecified'}
+How Did You Hear: ${(payload.hear_about_us || []).join(', ') || 'Unspecified'}`;
+
+        const crmPayload = {
+            firstName,
+            lastName,
+            emailAddress: payload.email || '',
+            phoneNumber: formatPhoneNumber(payload.mobile),
+            status: 'New',
+            source: 'Admission Form', // Distinct tag to prevent conflict
+            description
+        };
+
+        let res = await fetchEspo(`${baseUrl}/api/v1/Lead`, {
+            method: 'POST',
+            body: JSON.stringify(crmPayload)
+        });
+
+        let responseBody = await res.text();
+        console.log(`[CRM Sync] Response status: ${res.status}`);
+
+        // Fallback validation retry
+        let retryCount = 0;
+        const fallbackPayload = { ...crmPayload };
+        while (res.status === 400 && responseBody.includes('validationFailure') && retryCount < 2) {
+            let modified = false;
+            if (responseBody.includes('phoneNumber') && fallbackPayload.phoneNumber) {
+                console.warn('[CRM Sync] Phone validation failed. Retrying without phone...');
+                fallbackPayload.phoneNumber = '';
+                modified = true;
+            }
+            if (responseBody.includes('emailAddress') && fallbackPayload.emailAddress) {
+                console.warn('[CRM Sync] Email validation failed. Retrying without email...');
+                fallbackPayload.emailAddress = '';
+                modified = true;
+            }
+            if (!modified) break;
+
+            res = await fetchEspo(`${baseUrl}/api/v1/Lead`, {
+                method: 'POST',
+                body: JSON.stringify(fallbackPayload)
+            });
+            responseBody = await res.text();
+            console.log(`[CRM Sync] Fallback retry ${retryCount + 1} status: ${res.status}`);
+            retryCount++;
+        }
+
+        if (res.ok) {
+            console.log('[CRM Sync] Lead successfully created in EspoCRM!');
+            return true;
+        } else {
+            console.error(`[CRM Sync] Failed to sync: ${res.status} - ${responseBody}`);
+            return false;
+        }
+    } catch (err) {
+        console.error('[CRM Sync] Error executing EspoCRM sync:', err);
+        return false;
+    }
 }
 
 serve(async (req) => {
@@ -182,6 +430,15 @@ serve(async (req) => {
 
     if (!res.ok) {
       throw new Error(`Brevo API error: ${JSON.stringify(resData)}`)
+    }
+
+    // Attempt to sync the lead to EspoCRM asynchronously in the background.
+    // Wrap it in a try-catch so CRM sync issues never block the client-side success screen.
+    try {
+        console.log('[CRM Sync] Triggering background sync to EspoCRM...');
+        await syncLeadToEspoCRM(payload);
+    } catch (crmErr) {
+        console.error('[CRM Sync] Failed to sync to EspoCRM:', crmErr);
     }
 
     return new Response(
