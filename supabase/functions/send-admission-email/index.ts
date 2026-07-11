@@ -94,8 +94,26 @@ async function getBypassCookie(baseUrl: string): Promise<string> {
 /**
  * Custom authenticated fetch wrapper for EspoCRM
  */
+function getSanitizedBaseUrl(): string {
+    let url = Deno.env.get('ESPOCRM_URL') || 'https://uec-admissions.infinityfreeapp.com';
+    url = url.trim();
+    while (url.endsWith('/')) {
+        url = url.slice(0, -1);
+    }
+    if (url.endsWith('/api/v1')) {
+        url = url.slice(0, -7);
+    }
+    while (url.endsWith('/')) {
+        url = url.slice(0, -1);
+    }
+    if (url.includes('infinityfreeapp.com') && url.startsWith('http://')) {
+        url = 'https://' + url.slice(7);
+    }
+    return url;
+}
+
 async function fetchEspo(url: string, options: RequestInit = {}): Promise<Response> {
-    const baseUrl = Deno.env.get('ESPOCRM_URL') || 'http://uec-admissions.infinityfreeapp.com';
+    const baseUrl = getSanitizedBaseUrl();
     const espoUser = Deno.env.get('ESPOCRM_USERNAME') || 'uec_admin';
     const espoPass = Deno.env.get('ESPOCRM_PASSWORD') || 'ahmeduec123';
 
@@ -156,7 +174,7 @@ function formatPhoneNumber(phone: string | null | undefined): string {
 
 /** Primary entrypoint to sync student application to EspoCRM */
 async function syncLeadToEspoCRM(payload: any): Promise<boolean> {
-    const baseUrl = Deno.env.get('ESPOCRM_URL') || 'http://uec-admissions.infinityfreeapp.com';
+    const baseUrl = getSanitizedBaseUrl();
 
     try {
         const studentName = `${payload.first_name_en || ''} ${payload.second_name_en || ''} ${payload.third_name_en || ''} ${payload.last_name_en || ''}`.trim() || 'Prospect';
