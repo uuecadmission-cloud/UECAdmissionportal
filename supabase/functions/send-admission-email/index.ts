@@ -173,7 +173,7 @@ function formatPhoneNumber(phone: string | null | undefined): string {
 }
 
 /** Primary entrypoint to sync student application to EspoCRM */
-async function syncLeadToEspoCRM(payload: any): Promise<boolean> {
+async function syncLeadToEspoCRM(payload: any): Promise<any> {
     const baseUrl = getSanitizedBaseUrl();
 
     try {
@@ -260,14 +260,14 @@ How Did You Hear: ${(payload.hear_about_us || []).join(', ') || 'Unspecified'}`;
 
         if (res.ok) {
             console.log('[CRM Sync] Lead successfully created in EspoCRM!');
-            return true;
+            return { success: true, status: res.status, body: responseBody };
         } else {
             console.error(`[CRM Sync] Failed to sync: ${res.status} - ${responseBody}`);
-            return false;
+            return { success: false, status: res.status, body: responseBody };
         }
     } catch (err) {
         console.error('[CRM Sync] Error executing EspoCRM sync:', err);
-        return false;
+        return { success: false, error: err.message };
     }
 }
 
@@ -452,18 +452,17 @@ serve(async (req) => {
 
     // Attempt to sync the lead to EspoCRM asynchronously in the background.
     // Wrap it in a try-catch so CRM sync issues never block the client-side success screen.
-    let crmResult = false;
-    let crmError = null;
+    let crmResult = null;
     try {
         console.log('[CRM Sync] Triggering background sync to EspoCRM...');
         crmResult = await syncLeadToEspoCRM(payload);
     } catch (crmErr) {
-        crmError = crmErr.message;
+        crmResult = { success: false, error: crmErr.message };
         console.error('[CRM Sync] Failed to sync to EspoCRM:', crmErr);
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Email sent successfully', data: resData, crmResult, crmError }),
+      JSON.stringify({ success: true, message: 'Email sent successfully', data: resData, crmResult }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
