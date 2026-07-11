@@ -5450,14 +5450,14 @@
       try {
         const payload = {
           id: r.application_id,
-          first_name_en: r.name_en_first,
-          second_name_en: r.name_en_second,
-          third_name_en: r.name_en_third,
-          last_name_en: r.name_en_last,
-          first_name_ar: r.name_ar_first,
-          second_name_ar: r.name_ar_second,
-          third_name_ar: r.name_ar_third,
-          last_name_ar: r.name_ar_last,
+          first_name_en: r.first_name_en,
+          second_name_en: r.second_name_en,
+          third_name_en: r.third_name_en,
+          last_name_en: r.last_name_en,
+          first_name_ar: r.first_name_ar,
+          second_name_ar: r.second_name_ar,
+          third_name_ar: r.third_name_ar,
+          last_name_ar: r.last_name_ar,
           email: r.email,
           mobile: r.mobile,
           pref1: r.pref1,
@@ -5534,8 +5534,8 @@
       let html = `
         <div class="details-section-title">Personal Information</div>
         <div class="details-grid">
-          <div class="details-item"><label>Full Name (English)</label><span>${r.name_en_first || ''} ${r.name_en_second || ''} ${r.name_en_third || ''} ${r.name_en_last || ''}</span></div>
-          <div class="details-item"><label>Full Name (Arabic)</label><span>${r.name_ar_first || ''} ${r.name_ar_second || ''} ${r.name_ar_third || ''} ${r.name_ar_last || ''}</span></div>
+          <div class="details-item"><label>Full Name (English)</label><span>${r.first_name_en || ''} ${r.second_name_en || ''} ${r.third_name_en || ''} ${r.last_name_en || ''}</span></div>
+          <div class="details-item"><label>Full Name (Arabic)</label><span>${r.first_name_ar || ''} ${r.second_name_ar || ''} ${r.third_name_ar || ''} ${r.last_name_ar || ''}</span></div>
           <div class="details-item"><label>Nationality</label><span>${r.nationality || '—'}</span></div>
           <div class="details-item"><label>National ID / Passport</label><span>${r.national_id || r.passport_no || '—'}</span></div>
           <div class="details-item"><label>Date of Birth</label><span>${r.dob || '—'}</span></div>
@@ -5652,7 +5652,7 @@
         
         applications = data.map(row => ({
           id: row.application_id || row.id,
-          name: row.name_en_first + ' ' + row.name_en_last,
+          name: (row.first_name_en || '') + ' ' + (row.last_name_en || ''),
           intake: row.intake,
           faculty: row.pref1,
           score: row.score,
@@ -5787,14 +5787,14 @@
           new Date(r.created_at || Date.now()).toLocaleDateString(),
           r.applicant_type || '',
           r.intake || '',
-          r.name_en_first || '',
-          r.name_en_second || '',
-          r.name_en_third || '',
-          r.name_en_last || '',
-          r.name_ar_first || '',
-          r.name_ar_second || '',
-          r.name_ar_third || '',
-          r.name_ar_last || '',
+          r.first_name_en || '',
+          r.second_name_en || '',
+          r.third_name_en || '',
+          r.last_name_en || '',
+          r.first_name_ar || '',
+          r.second_name_ar || '',
+          r.third_name_ar || '',
+          r.last_name_ar || '',
           r.gender || '',
           r.nationality || '',
           r.national_id || '',
