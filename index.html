@@ -2351,7 +2351,9 @@
         <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--navy); margin:0;" id="details-title">Application Details</h3>
         <div style="display:flex; gap:10px; align-items:center;">
           <button id="crm-sync-btn" class="btn btn-gold" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer;">Sync to CRM 🔄</button>
-          <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);" onclick="closeAdminDetails()">Close ✕</button>
+          <button id="edit-app-btn" class="btn btn-primary" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer; background-color:var(--navy); color:#fff; border:none;">Edit ✏️</button>
+          <button id="cancel-edit-btn" class="btn btn-ghost hidden" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);">Cancel ✕</button>
+          <button id="close-details-btn" class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);" onclick="closeAdminDetails()">Close ✕</button>
         </div>
       </div>
       
@@ -5385,6 +5387,8 @@
     // Track where to return when leaving admin panel
     let adminReturnView = 'form-view';
     let isAdminAuthenticated = false;
+    let isEditing = false;
+    let currentEditingAppId = null;
 
     function closeAdminLogin() {
       document.getElementById('admin-login-modal').classList.add('hidden');
@@ -5436,6 +5440,7 @@
     }
 
     function closeAdminDetails() {
+      isEditing = false;
       document.getElementById('admin-details-modal').classList.add('hidden');
     }
 
@@ -5500,7 +5505,7 @@
           btn.style.color = '#fff';
           alert('Successfully synchronized with EspoCRM!');
         } else {
-          throw new Error(data.error || 'Server error');
+          throw new Error((data.crmResult && data.crmResult.error) || data.error || 'Server error');
         }
       } catch (err) {
         console.error(err);
@@ -5510,15 +5515,129 @@
       }
     }
 
+    async function saveApplicationEdits(id, btn) {
+      if (!supabaseClient) { alert('Database not connected.'); return; }
+      
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const fieldsToSave = [
+        'first_name_en', 'second_name_en', 'third_name_en', 'last_name_en',
+        'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar',
+        'nationality', 'national_id', 'passport_no', 'dob', 'gender',
+        'mobile', 'email', 'governorate', 'city', 'address_country', 'address_ar',
+        'edu_system', 'school_name', 'grad_year', 'score', 'seat_number',
+        'status', 'intake', 'father_name', 'father_mobile', 'father_occupation',
+        'mother_name', 'mother_mobile', 'mother_occupation', 'sibling_id',
+        'admin_notes'
+      ];
+
+      const updatedFields = {};
+      fieldsToSave.forEach(f => {
+        const el = document.getElementById(`edit_${f}`);
+        if (el) {
+          let val = el.value.trim();
+          if (f === 'score') val = parseFloat(val) || 0;
+          if (f === 'grad_year') val = parseInt(val, 10) || 0;
+          updatedFields[f] = val;
+        }
+      });
+
+      try {
+        const { error } = await supabaseClient
+          .from('applications')
+          .update(updatedFields)
+          .eq('application_id', id);
+
+        if (error) {
+          if (error.message.includes('admin_notes') || error.message.includes('column')) {
+            console.warn('Saving failed due to admin_notes. Retrying without admin_notes column...');
+            delete updatedFields['admin_notes'];
+            const { error: retryError } = await supabaseClient
+              .from('applications')
+              .update(updatedFields)
+              .eq('application_id', id);
+            
+            if (retryError) throw retryError;
+            alert('Changes saved successfully! (Note: admin_notes was NOT saved because you need to create the admin_notes column in Supabase).');
+          } else {
+            throw error;
+          }
+        } else {
+          alert('Changes saved successfully!');
+        }
+
+        // Reset editing state
+        isEditing = false;
+        document.getElementById('cancel-edit-btn').classList.add('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Edit ✏️';
+        btn.style.backgroundColor = '';
+        const closeBtn = document.getElementById('close-details-btn');
+        const syncBtn = document.getElementById('crm-sync-btn');
+        if (syncBtn) syncBtn.disabled = false;
+        if (closeBtn) closeBtn.disabled = false;
+
+        // Reload data and refresh modal
+        await loadApplications();
+        showApplicationDetails(id);
+
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.textContent = origText;
+        alert('Failed to save changes: ' + err.message);
+      }
+    }
+
     function showApplicationDetails(id) {
       const app = applications.find(x => x.id === id);
       if (!app || !app.raw) return;
       const r = app.raw;
 
+      const editBtn = document.getElementById('edit-app-btn');
+      const cancelBtn = document.getElementById('cancel-edit-btn');
+      const closeBtn = document.getElementById('close-details-btn');
       const syncBtn = document.getElementById('crm-sync-btn');
+
+      if (editBtn) {
+        if (!isEditing) {
+          editBtn.textContent = 'Edit ✏️';
+          editBtn.style.backgroundColor = '';
+        }
+        editBtn.onclick = () => {
+          if (!isEditing) {
+            isEditing = true;
+            if (cancelBtn) cancelBtn.classList.remove('hidden');
+            editBtn.textContent = 'Save Changes 💾';
+            editBtn.style.backgroundColor = 'var(--success)';
+            if (syncBtn) syncBtn.disabled = true;
+            if (closeBtn) closeBtn.disabled = true;
+            showApplicationDetails(id);
+          } else {
+            saveApplicationEdits(id, editBtn);
+          }
+        };
+      }
+
+      if (cancelBtn) {
+        cancelBtn.onclick = () => {
+          isEditing = false;
+          cancelBtn.classList.add('hidden');
+          if (editBtn) {
+            editBtn.textContent = 'Edit ✏️';
+            editBtn.style.backgroundColor = '';
+          }
+          if (syncBtn) syncBtn.disabled = false;
+          if (closeBtn) closeBtn.disabled = false;
+          showApplicationDetails(id);
+        };
+      }
+
       if (syncBtn) {
         syncBtn.onclick = () => syncApplicationToCRM(app.id, syncBtn);
-        syncBtn.disabled = false;
+        syncBtn.disabled = isEditing;
         syncBtn.textContent = 'Sync to CRM 🔄';
         syncBtn.style.backgroundColor = '';
         syncBtn.style.color = '';
@@ -5530,40 +5649,127 @@
       const pref1 = r.pref1 || '—';
       const pref2 = r.pref2 || '—';
       const pref3 = r.pref3 || '—';
+
+      function renderField(label, id, value, editable = true, type = 'text') {
+        if (!isEditing || !editable) {
+          return `<div class="details-item"><label>${label}</label><span>${value || '—'}</span></div>`;
+        }
+        if (type === 'textarea') {
+          return `<div class="details-item" style="grid-column: span 2;"><label>${label}</label><textarea id="edit_${id}" style="width:100%; min-height:60px; padding:6px; border:1px solid var(--border); border-radius:4px; font-family:inherit;">${value || ''}</textarea></div>`;
+        }
+        return `<div class="details-item"><label>${label}</label><input type="${type}" id="edit_${id}" value="${value || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>`;
+      }
+
+      let nameHTML = '';
+      if (!isEditing) {
+        nameHTML = `
+          <div class="details-item"><label>Full Name (English)</label><span>${r.first_name_en || ''} ${r.second_name_en || ''} ${r.third_name_en || ''} ${r.last_name_en || ''}</span></div>
+          <div class="details-item"><label>Full Name (Arabic)</label><span>${r.first_name_ar || ''} ${r.second_name_ar || ''} ${r.third_name_ar || ''} ${r.last_name_ar || ''}</span></div>
+        `;
+      } else {
+        nameHTML = `
+          <div class="details-item" style="grid-column: span 2; display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px;">
+            <div><label>First Name (EN)</label><input type="text" id="edit_first_name_en" value="${r.first_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Second (EN)</label><input type="text" id="edit_second_name_en" value="${r.second_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Third (EN)</label><input type="text" id="edit_third_name_en" value="${r.third_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Last (EN)</label><input type="text" id="edit_last_name_en" value="${r.last_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+          </div>
+          <div class="details-item" style="grid-column: span 2; display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px;">
+            <div><label>First Name (AR)</label><input type="text" id="edit_first_name_ar" value="${r.first_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Second (AR)</label><input type="text" id="edit_second_name_ar" value="${r.second_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Third (AR)</label><input type="text" id="edit_third_name_ar" value="${r.third_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Last (AR)</label><input type="text" id="edit_last_name_ar" value="${r.last_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+          </div>
+        `;
+      }
+
+      let statusHTML = '';
+      if (!isEditing) {
+        statusHTML = `<div class="details-item"><label>Status</label><span class="status-badge status-${r.status || 'pending'}">${r.status || 'pending'}</span></div>`;
+      } else {
+        statusHTML = `
+          <div class="details-item">
+            <label>Status</label>
+            <select id="edit_status" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px; height:36px; background:#white;">
+              <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>pending</option>
+              <option value="under review" ${r.status === 'under review' ? 'selected' : ''}>under review</option>
+              <option value="approved" ${r.status === 'approved' ? 'selected' : ''}>approved</option>
+              <option value="rejected" ${r.status === 'rejected' ? 'selected' : ''}>rejected</option>
+            </select>
+          </div>
+        `;
+      }
+
+      let intakeHTML = '';
+      if (!isEditing) {
+        intakeHTML = `<div class="details-item"><label>Intake Period</label><span style="text-transform:capitalize">${r.intake || '—'}</span></div>`;
+      } else {
+        intakeHTML = `
+          <div class="details-item">
+            <label>Intake Period</label>
+            <select id="edit_intake" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px; height:36px; background:#white;">
+              <option value="Fall 2026/2027" ${r.intake === 'Fall 2026/2027' ? 'selected' : ''}>Fall 2026/2027</option>
+              <option value="Spring 2026/2027" ${r.intake === 'Spring 2026/2027' ? 'selected' : ''}>Spring 2026/2027</option>
+            </select>
+          </div>
+        `;
+      }
       
       let html = `
         <div class="details-section-title">Personal Information</div>
         <div class="details-grid">
-          <div class="details-item"><label>Full Name (English)</label><span>${r.first_name_en || ''} ${r.second_name_en || ''} ${r.third_name_en || ''} ${r.last_name_en || ''}</span></div>
-          <div class="details-item"><label>Full Name (Arabic)</label><span>${r.first_name_ar || ''} ${r.second_name_ar || ''} ${r.third_name_ar || ''} ${r.last_name_ar || ''}</span></div>
-          <div class="details-item"><label>Nationality</label><span>${r.nationality || '—'}</span></div>
-          <div class="details-item"><label>National ID / Passport</label><span>${r.national_id || r.passport_no || '—'}</span></div>
-          <div class="details-item"><label>Date of Birth</label><span>${r.dob || '—'}</span></div>
-          <div class="details-item"><label>Gender</label><span>${r.gender || '—'}</span></div>
+          ${nameHTML}
+          ${renderField('Nationality', 'nationality', r.nationality)}
+          ${renderField('National ID', 'national_id', r.national_id || '')}
+          ${renderField('Passport No', 'passport_no', r.passport_no || '')}
+          ${renderField('Date of Birth', 'dob', r.dob, true, 'date')}
+          ${renderField('Gender', 'gender', r.gender)}
         </div>
 
         <div class="details-section-title">Contact Information</div>
         <div class="details-grid">
-          <div class="details-item"><label>Mobile (WhatsApp)</label><span>${r.country_code || ''} ${r.mobile || '—'}</span></div>
-          <div class="details-item"><label>Student Email</label><span>${r.email || '—'}</span></div>
-          <div class="details-item"><label>Governorate & City</label><span>${r.governorate || '—'}, ${r.city || '—'}</span></div>
-          <div class="details-item"><label>Address Country</label><span>${r.address_country || '—'}</span></div>
-          <div class="details-item" style="grid-column: span 2;"><label>Detailed Address</label><span>${r.address_ar || '—'}</span></div>
+          ${renderField('Mobile (WhatsApp)', 'mobile', r.mobile)}
+          ${renderField('Student Email', 'email', r.email, true, 'email')}
+          ${renderField('Governorate', 'governorate', r.governorate)}
+          ${renderField('City', 'city', r.city)}
+          ${renderField('Address Country', 'address_country', r.address_country)}
+          ${renderField('Detailed Address', 'address_ar', r.address_ar)}
         </div>
 
         <div class="details-section-title">Academic & Program Choices</div>
         <div class="details-grid">
-          <div class="details-item"><label>High School Certificate</label><span style="text-transform:capitalize">${(r.edu_system || '—').replace('thanaweya', 'Thanaweya')}</span></div>
-          <div class="details-item"><label>School Name</label><span>${r.school_name || '—'}</span></div>
-          <div class="details-item"><label>Graduation Year</label><span>${r.grad_year || '—'}</span></div>
-          <div class="details-item"><label>High School Score %</label><span>${r.score || '—'}${r.score ? '%' : ''}</span></div>
-          <div class="details-item"><label>Seat Number</label><span>${r.seat_number || '—'}</span></div>
-          <div class="details-item"><label>Intake Period</label><span style="text-transform:capitalize">${r.intake || '—'}</span></div>
+          ${renderField('High School Certificate', 'edu_system', r.edu_system)}
+          ${renderField('School Name', 'school_name', r.school_name)}
+          ${renderField('Graduation Year', 'grad_year', r.grad_year, true, 'number')}
+          ${renderField('High School Score %', 'score', r.score, true, 'number')}
+          ${renderField('Seat Number', 'seat_number', r.seat_number)}
+          ${intakeHTML}
+          ${statusHTML}
           
           <div class="details-item" style="grid-column: span 2;">
             <label>Program Choices (Preferences)</label>
             <span>1st: ${pref1} | 2nd: ${pref2} | 3rd: ${pref3}</span>
           </div>
+        </div>
+
+        <div class="details-section-title">Parents Details</div>
+        <div class="details-grid">
+          ${renderField('Father Name', 'father_name', r.father_name)}
+          ${renderField('Father Mobile', 'father_mobile', r.father_mobile)}
+          ${renderField('Father Job Sector', 'father_occupation', r.father_occupation)}
+          ${renderField('Mother Name', 'mother_name', r.mother_name)}
+          ${renderField('Mother Mobile', 'mother_mobile', r.mother_mobile)}
+          ${renderField('Mother Job Sector', 'mother_occupation', r.mother_occupation)}
+          ${renderField('Sibling ID (If enrolled)', 'sibling_id', r.sibling_id)}
+        </div>
+
+        <div class="details-section-title">Admin Comments & Notes</div>
+        <div class="details-grid">
+          ${renderField('Admin Notes', 'admin_notes', r.admin_notes || '', true, 'textarea')}
+        </div>
+
+        <div class="details-section-title">Document Attachments</div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:8px;">
       `;
 
       if (r.applicant_type === 'transfer') {
@@ -5573,24 +5779,6 @@
           <div class="details-item" style="grid-column: span 2;"><label>Current Faculty</label><span>${r.transfer_faculty_choice || '—'}</span></div>
         `;
       }
-
-      html += `
-        </div>
-
-        <div class="details-section-title">Parents Details</div>
-        <div class="details-grid">
-          <div class="details-item"><label>Father/Guardian Name</label><span>${r.father_name || '—'}</span></div>
-          <div class="details-item"><label>Father Mobile</label><span>${r.father_country_code || ''} ${r.father_mobile || '—'}</span></div>
-          <div class="details-item"><label>Father Job Sector</label><span>${r.father_occupation || '—'}</span></div>
-          <div class="details-item"><label>Mother Name</label><span>${r.mother_name || '—'}</span></div>
-          <div class="details-item"><label>Mother Mobile</label><span>${r.mother_country_code || ''} ${r.mother_mobile || '—'}</span></div>
-          <div class="details-item"><label>Mother Job Sector</label><span>${r.mother_occupation || '—'}</span></div>
-          <div class="details-item" style="grid-column: span 2;"><label>Sibling enrolled in UEC?</label><span>${r.siblings_enrolled === 'yes' ? 'Yes, Sibling ID: ' + r.sibling_id : 'No'}</span></div>
-        </div>
-
-        <div class="details-section-title">Document Attachments</div>
-        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:8px;">
-      `;
 
       function getAttachmentLink(url, label) {
         if (url) {
