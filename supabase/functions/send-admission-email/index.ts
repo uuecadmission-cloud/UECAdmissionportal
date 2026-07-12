@@ -280,14 +280,16 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    const { email, first_name_en, last_name_en, id } = payload
+    const { email, first_name_en, last_name_en, id, sync_only } = payload
 
-    const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
-    if (!BREVO_API_KEY) {
-      throw new Error('Missing BREVO_API_KEY environment variable in Supabase')
-    }
+    let resData = null;
+    if (!sync_only) {
+      const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
+      if (!BREVO_API_KEY) {
+        throw new Error('Missing BREVO_API_KEY environment variable in Supabase')
+      }
 
-    // HTML email body with UEC branding, bilingual confirmation content, and logo
+      // HTML email body with UEC branding, bilingual confirmation content, and logo
     const emailHtml = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 20px auto; border: 1px solid #e0e6ed; padding: 30px; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
         
@@ -445,10 +447,11 @@ serve(async (req) => {
       }),
     })
 
-    const resData = await res.json()
+      resData = await res.json()
 
-    if (!res.ok) {
-      throw new Error(`Brevo API error: ${JSON.stringify(resData)}`)
+      if (!res.ok) {
+        throw new Error(`Brevo API error: ${JSON.stringify(resData)}`)
+      }
     }
 
     // Attempt to sync the lead to EspoCRM asynchronously in the background.
