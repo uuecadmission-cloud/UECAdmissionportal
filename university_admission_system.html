@@ -5263,13 +5263,17 @@
           console.warn('Supabase unavailable — submission saved locally only.');
         }
 
-        // Trigger automatic email notification asynchronously
-        triggerAutoEmail(payload).catch(err => console.error("Email send trigger failed: ", err));
-
         const namePart = (data.name_en_first || 'stud').toLowerCase().slice(0, 5);
         const randNum = Math.floor(1000 + Math.random() * 9000);
         const generatedUsername = namePart + randNum;
         const generatedPassword = 'Uec' + Math.floor(100000 + Math.random() * 900000) + '!';
+
+        // Add generated credentials to payload for email dispatch
+        payload.portal_username = generatedUsername;
+        payload.portal_password = generatedPassword;
+
+        // Trigger automatic email notification asynchronously
+        triggerAutoEmail(payload).catch(err => console.error("Email send trigger failed: ", err));
 
         localStorage.removeItem('uni_draft');
         

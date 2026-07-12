@@ -195,6 +195,8 @@ Email: ${payload.email || 'no-email'}
 Phone: ${payload.mobile || 'no-phone'}
 Application ID: ${payload.id}
 Portal Source: Admission Form
+Portal Username: ${payload.portal_username || 'Not Generated'}
+Portal Password: ${payload.portal_password || 'Not Generated'}
 Faculty Preference 1: ${payload.pref1 || 'Unspecified'}
 Faculty Preference 2: ${payload.pref2 || 'Unspecified'}
 Faculty Preference 3: ${payload.pref3 || 'Unspecified'}
@@ -280,7 +282,7 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    const { email, first_name_en, last_name_en, id, sync_only } = payload
+    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password } = payload
 
     let resData = null;
     if (!sync_only) {
@@ -354,6 +356,26 @@ serve(async (req) => {
           
           <p style="font-size: 15px; line-height: 1.8; color: #2d3748; margin-top: 20px;">يسعدنا الترحيب بكم ونتطلع إلى انضمامكم إلى مجتمعنا الجامعي.</p>
           <p style="font-size: 14px; line-height: 1.8; color: #2d3748; font-weight: bold; margin-top: 10px;">مع أطيب التمنيات،<br/>فريق القبول – جامعة شرق العاصمة</p>
+        </div>
+
+        <!-- Student Portal Credentials -->
+        <div style="background-color: #f7fafc; border: 1px solid #edf2f7; border-left: 4px solid #C5A358; padding: 20px; margin: 25px 0; border-radius: 8px;">
+          <h4 style="margin: 0 0 10px 0; color: #0A1F3C; font-size: 15px; font-weight: 700; text-align: left; border-bottom: 1px solid #edf2f7; padding-bottom: 8px;">Student Portal Credentials / بيانات الدخول لبوابة الطالب</h4>
+          <p style="margin: 0 0 12px 0; font-size: 13px; line-height: 1.5; color: #4a5568; text-align: left;">
+            You can use the following temporary credentials to log in to your UEC student portal:
+            <br>
+            يمكنك استخدام البيانات المؤقتة التالية لتسجيل الدخول إلى بوابة الطالب الخاصة بك بجامعة UEC:
+          </p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #4a5568; line-height: 1.6;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #0A1F3C; width: 35%; text-align: left;">Portal Username / الاسم:</td>
+              <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #C5A358; text-align: left;">${portal_username || 'Generated on Login'}</td>
+            </tr>
+            <tr style="border-top: 1px solid #edf2f7;">
+              <td style="padding: 6px 0; font-weight: bold; color: #0A1F3C; text-align: left;">Temporary Password / المرور:</td>
+              <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #C5A358; text-align: left;">${portal_password || 'Generated on Login'}</td>
+            </tr>
+          </table>
         </div>
 
         <!-- Bank Details Section -->
