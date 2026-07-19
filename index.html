@@ -4071,8 +4071,10 @@
     let activeDropdownContainer = null;
 
     // ===== INIT =====
+    let fallbackId = '';
     function init() {
-      appId = generateAppId();
+      fallbackId = generateFallbackAppId();
+      appId = fallbackId;
       document.getElementById('app-id-display').textContent = appId;
       populateYears();
       buildHearAboutUsCheckboxes();
@@ -4108,6 +4110,13 @@
       loadDraft();
       renderFunnel();
 
+      fetchNextAppId().then(seqId => {
+        if (appId === fallbackId) {
+          appId = seqId;
+          document.getElementById('app-id-display').textContent = appId;
+        }
+      });
+
       // Check active auth session
       if (supabaseClient) {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -4118,8 +4127,40 @@
       }
     }
 
-    function generateAppId() {
+    function generateFallbackAppId() {
       return 'APP-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+    }
+
+    async function fetchNextAppId() {
+      if (!supabaseClient) {
+        return generateFallbackAppId();
+      }
+      try {
+        const { data, error } = await supabaseClient
+          .from('applications')
+          .select('id')
+          .like('id', 'APP-2026-20%')
+          .order('id', { ascending: false })
+          .limit(1);
+          
+        if (error) throw error;
+        
+        let nextSeq = 2090; // Default start sequence number (covers the max 2089 currently in DB)
+        if (data && data.length > 0) {
+          const lastIdStr = data[0].id;
+          const match = lastIdStr.match(/APP-2026-(\d+)/);
+          if (match && match[1]) {
+            const lastSeq = parseInt(match[1], 10);
+            if (lastSeq >= 2077 && lastSeq < 9000) {
+              nextSeq = lastSeq + 1;
+            }
+          }
+        }
+        return 'APP-' + new Date().getFullYear() + '-' + nextSeq;
+      } catch (err) {
+        console.warn("Failed to fetch next sequential App ID, falling back to random: ", err);
+        return generateFallbackAppId();
+      }
     }
 
     function populateYears() {
