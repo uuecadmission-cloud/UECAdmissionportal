@@ -282,10 +282,19 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password } = payload
+    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password, resend_copy_to } = payload
 
     let resData = null;
-    if (!sync_only) {
+    const recipientEmail = resend_copy_to || email;
+    const recipientName = resend_copy_to ? "Admissions Office (Copy)" : `${first_name_en} ${last_name_en}`;
+    const mailSubject = resend_copy_to 
+      ? `[Copy] UEC Admission Application Received - ID: ${id}` 
+      : `UEC Admission Application Received - ID: ${id}`;
+    
+    const p_user = resend_copy_to ? "[Saved in CRM]" : (portal_username || 'Generated on Login');
+    const p_pass = resend_copy_to ? "[Saved in CRM]" : (portal_password || 'Generated on Login');
+
+    if (!sync_only || resend_copy_to) {
       const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
       if (!BREVO_API_KEY) {
         throw new Error('Missing BREVO_API_KEY environment variable in Supabase')
@@ -369,11 +378,11 @@ serve(async (req) => {
           <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #4a5568; line-height: 1.6;">
             <tr>
               <td style="padding: 6px 0; font-weight: bold; color: #0A1F3C; width: 35%; text-align: left;">Portal Username / الاسم:</td>
-              <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #C5A358; text-align: left;">${portal_username || 'Generated on Login'}</td>
+              <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #C5A358; text-align: left;">${p_user}</td>
             </tr>
             <tr style="border-top: 1px solid #edf2f7;">
               <td style="padding: 6px 0; font-weight: bold; color: #0A1F3C; text-align: left;">Temporary Password / المرور:</td>
-              <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #C5A358; text-align: left;">${portal_password || 'Generated on Login'}</td>
+              <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #C5A358; text-align: left;">${p_pass}</td>
             </tr>
           </table>
         </div>
@@ -460,11 +469,11 @@ serve(async (req) => {
         },
         to: [
           {
-            email: email,
-            name: `${first_name_en} ${last_name_en}`,
+            email: recipientEmail,
+            name: recipientName,
           }
         ],
-        subject: `UEC Admission Application Received - ID: ${id}`,
+        subject: mailSubject,
         htmlContent: emailHtml,
       }),
     })
@@ -479,12 +488,14 @@ serve(async (req) => {
     // Attempt to sync the lead to EspoCRM asynchronously in the background.
     // Wrap it in a try-catch so CRM sync issues never block the client-side success screen.
     let crmResult = null;
-    try {
-        console.log('[CRM Sync] Triggering background sync to EspoCRM...');
-        crmResult = await syncLeadToEspoCRM(payload);
-    } catch (crmErr) {
-        crmResult = { success: false, error: crmErr.message };
-        console.error('[CRM Sync] Failed to sync to EspoCRM:', crmErr);
+    if (!resend_copy_to) {
+        try {
+            console.log('[CRM Sync] Triggering background sync to EspoCRM...');
+            crmResult = await syncLeadToEspoCRM(payload);
+        } catch (crmErr) {
+            crmResult = { success: false, error: crmErr.message };
+            console.error('[CRM Sync] Failed to sync to EspoCRM:', crmErr);
+        }
     }
 
     return new Response(
