@@ -294,6 +294,14 @@ serve(async (req) => {
     const p_user = resend_copy_to ? "[Saved in CRM]" : (portal_username || 'Generated on Login');
     const p_pass = resend_copy_to ? "[Saved in CRM]" : (portal_password || 'Generated on Login');
 
+    const ccList = [];
+    if (!resend_copy_to) {
+      ccList.push({
+        email: 'enrol@uec.edu.eg',
+        name: 'UEC Admissions Office'
+      });
+    }
+
     if (!sync_only || resend_copy_to) {
       const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
       if (!BREVO_API_KEY) {
@@ -473,6 +481,7 @@ serve(async (req) => {
             name: recipientName,
           }
         ],
+        cc: ccList.length > 0 ? ccList : undefined,
         subject: mailSubject,
         htmlContent: emailHtml,
       }),
