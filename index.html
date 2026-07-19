@@ -6034,7 +6034,7 @@
       let rows = applications.map(a => {
         const r = a.raw || {};
         return [
-          r.application_id || '',
+          r.id || '',
           r.status || 'pending',
           new Date(r.created_at || Date.now()).toLocaleDateString(),
           r.applicant_type || '',
