@@ -4163,6 +4163,17 @@
       }
     }
 
+    function getDisplayAppId(row) {
+      if (!row) return '';
+      const rawId = row.id || row.application_id || '';
+      const fullName = `${row.first_name_en || ''} ${row.second_name_en || ''} ${row.third_name_en || ''} ${row.last_name_en || ''} ${row.email || ''}`.toLowerCase();
+      
+      if (rawId.startsWith('UNASSIGNED-') || rawId.startsWith('TEST-') || rawId.startsWith('PROBE-') || rawId.startsWith('APP-TEST-') || fullName.includes('test') || fullName.includes('tsetse')) {
+        return '';
+      }
+      return rawId;
+    }
+
     function populateYears() {
       let sel = document.getElementById('grad_year');
       let y = new Date().getFullYear();
@@ -4868,19 +4879,7 @@
           DATA_TRANSFER_FACULTIES.map(f => `<option value="${f}">${f}</option>`).join('');
       } else {
         const allFaculties = [
-          "Faculty of Medicine",
-          "Faculty of Pharmacy",
-          "Faculty of Dentistry",
-          "Faculty of Physiotherapy",
-          "Faculty of Engineering",
-          "Faculty of Computer Science & IT",
-          "Faculty of Business",
-          "Faculty of Economics",
-          "Faculty of Political Science",
-          "Faculty of Arts & Humanities",
-          "Faculty of Art & Design",
-          "Faculty of Law",
-          "Faculty of Mass Communication"
+          "Faculty of Medicine"
         ];
         allFaculties.forEach(f => {
           html += `<option value="${f}">${f}</option>`;
@@ -5708,7 +5707,8 @@
       }
       
       const content = document.getElementById('details-content');
-      document.getElementById('details-title').textContent = `Application Details: ${r.application_id}`;
+      const modalDisplayId = getDisplayAppId(r);
+      document.getElementById('details-title').textContent = modalDisplayId ? `Application Details: ${modalDisplayId}` : `Application Details (Test Record)`;
       
       const pref1 = r.pref1 || '—';
       const pref2 = r.pref2 || '—';
@@ -5903,7 +5903,8 @@
         if (error) throw error;
         
         applications = data.map(row => ({
-          id: row.application_id || row.id,
+          id: row.id || row.application_id,
+          displayId: getDisplayAppId(row),
           name: (row.first_name_en || '') + ' ' + (row.last_name_en || ''),
           intake: row.intake,
           faculty: row.pref1,
@@ -5961,7 +5962,7 @@
       }
       tbody.innerHTML = rows.map(a => `
     <tr style="cursor:pointer" onclick="showApplicationDetails('${a.id}')">
-      <td><code style="font-size:11px;color:var(--navy);font-family:monospace">${a.id}</code></td>
+      <td><code style="font-size:11px;color:var(--navy);font-family:monospace">${a.displayId}</code></td>
       <td>${a.name || '—'}</td>
       <td style="text-transform:capitalize">${a.intake || '—'}</td>
       <td>${(a.faculty || '—').replace('Faculty of ', '')}</td>
@@ -6034,7 +6035,7 @@
       let rows = applications.map(a => {
         const r = a.raw || {};
         return [
-          r.id || '',
+          getDisplayAppId(r),
           r.status || 'pending',
           new Date(r.created_at || Date.now()).toLocaleDateString(),
           r.applicant_type || '',
