@@ -4140,24 +4140,25 @@
         const { data, error } = await supabaseClient
           .from('applications')
           .select('id')
-          .like('id', 'APP-2026-20%')
-          .order('id', { ascending: false })
-          .limit(1);
+          .like('id', 'APP-' + new Date().getFullYear() + '-%')
+          .order('created_at', { ascending: false })
+          .limit(30);
           
         if (error) throw error;
         
-        let nextSeq = 2090; // Default start sequence number (covers the max 2089 currently in DB)
+        let maxSeq = 2089; // Base start sequence
         if (data && data.length > 0) {
-          const lastIdStr = data[0].id;
-          const match = lastIdStr.match(/APP-2026-(\d+)/);
-          if (match && match[1]) {
-            const lastSeq = parseInt(match[1], 10);
-            if (lastSeq >= 2077 && lastSeq < 9000) {
-              nextSeq = lastSeq + 1;
+          data.forEach(row => {
+            const match = (row.id || '').match(/APP-\d+-(\d+)/);
+            if (match && match[1]) {
+              const seq = parseInt(match[1], 10);
+              if (seq > maxSeq && seq < 99999) {
+                maxSeq = seq;
+              }
             }
-          }
+          });
         }
-        return 'APP-' + new Date().getFullYear() + '-' + nextSeq;
+        return 'APP-' + new Date().getFullYear() + '-' + (maxSeq + 1);
       } catch (err) {
         console.warn("Failed to fetch next sequential App ID, falling back to random: ", err);
         return generateFallbackAppId();
@@ -5321,11 +5322,40 @@
         };
 
         if (supabaseClient) {
-          const { error } = await supabaseClient
-            .from('applications')
-            .insert([payload]);
-          if (error) {
-            throw new Error('Database error: ' + error.message);
+          // Re-fetch guaranteed fresh ID right before database insertion
+          const freshId = await fetchNextAppId();
+          if (freshId && freshId !== appId) {
+            appId = freshId;
+            payload.id = appId;
+            const displayEl = document.getElementById('app-id-display');
+            if (displayEl) displayEl.textContent = appId;
+          }
+
+          let insertSuccess = false;
+          let attempts = 0;
+
+          while (!insertSuccess && attempts < 5) {
+            attempts++;
+            const { error } = await supabaseClient
+              .from('applications')
+              .insert([payload]);
+
+            if (error) {
+              if (error.message.includes('duplicate key') || error.message.includes('applications_pkey') || error.code === '23505') {
+                console.warn(`Primary key collision on ${appId}, retrying with next sequential ID (attempt ${attempts})...`);
+                const match = appId.match(/APP-\d+-(\d+)/);
+                const nextSeqNum = match && match[1] ? (parseInt(match[1], 10) + 1) : Math.floor(1000 + Math.random() * 9000);
+                appId = 'APP-' + new Date().getFullYear() + '-' + nextSeqNum;
+                payload.id = appId;
+                const displayEl = document.getElementById('app-id-display');
+                if (displayEl) displayEl.textContent = appId;
+                await new Promise(r => setTimeout(r, 150));
+                continue;
+              }
+              throw new Error('Database error: ' + error.message);
+            } else {
+              insertSuccess = true;
+            }
           }
         } else {
           console.warn('Supabase unavailable — submission saved locally only.');
