@@ -4141,24 +4141,25 @@
           .select('id, first_name_en, last_name_en')
           .like('id', 'APP-' + new Date().getFullYear() + '-%')
           .order('created_at', { ascending: false })
-          .limit(50);
+          .limit(100);
           
         if (error) throw error;
         
-        let maxSeq = 2089; // Base start sequence
+        let maxSeq = 2100; // Base start — the last real sequential ID is 2100 (Mohammed Ghonim)
         if (data && data.length > 0) {
           data.forEach(row => {
             const rawId = row.id || '';
             const nameStr = `${row.first_name_en || ''} ${row.last_name_en || ''}`.toLowerCase();
-            // Ignore test submissions
-            if (nameStr.includes('test') || nameStr.includes('tsetse') || rawId.startsWith('UNASSIGNED-') || rawId.startsWith('TEST-')) {
+            // Skip test submissions
+            if (nameStr.includes('test') || nameStr.includes('tsetse') ||
+                rawId.startsWith('UNASSIGNED-') || rawId.startsWith('TEST-') || rawId.startsWith('PROBE-')) {
               return;
             }
             const match = rawId.match(/APP-\d+-(\d+)/);
             if (match && match[1]) {
               const seq = parseInt(match[1], 10);
-              // Sequential student IDs are in the 2000-8000 range
-              if (seq > maxSeq && seq < 9000) {
+              // ONLY count sequential IDs in the official 2079-2999 range
+              if (seq >= 2079 && seq <= 2999 && seq > maxSeq) {
                 maxSeq = seq;
               }
             }
