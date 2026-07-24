@@ -2118,7 +2118,7 @@
                 <input type="file" id="file_photo" accept=".jpg,.jpeg,.png,.heic,.heif" onclick="event.stopPropagation();" onchange="handleFile(this,'fz-photo','prev-photo','fname-photo')">
                 <div class="file-zone-icon">🖼</div>
                 <p>Click to upload Personal Photo</p>
-                <p class="file-type">JPG, PNG, HEIC — Max 2MB</p>
+                <p class="file-type">JPG, PNG, HEIC — Max 5MB</p>
               </div>
               <div class="file-preview hidden" id="prev-photo">
                 <span style="color:var(--success)">✓</span>
@@ -2134,13 +2134,14 @@
                 <input type="file" id="file_extra" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif" multiple onclick="event.stopPropagation();" onchange="handleFile(this,'fz-extra','prev-extra','fname-extra')">
                 <div class="file-zone-icon">📎</div>
                 <p>Click to upload additional certificates</p>
-                <p class="file-type">PDF, JPG, PNG, HEIC — Multiple files allowed</p>
+                <p class="file-type">PDF, JPG, PNG, HEIC — Max 5MB per file</p>
               </div>
               <div class="file-preview hidden" id="prev-extra">
                 <span style="color:var(--success)">✓</span>
                 <span class="file-preview-name" id="fname-extra"></span>
                 <span class="file-preview-rm" onclick="removeFile('file_extra','fz-extra','prev-extra','fname-extra')">✕</span>
               </div>
+              <span class="err-msg" id="err_file_extra"></span>
             </div>
           </div>
 
@@ -5010,16 +5011,24 @@
     function handleFile(input, zoneId, prevId, nameId) {
       let f = input.files[0];
       if (!f) return;
-      let maxMB = input.id === 'file_photo' ? 2 : 5;
-      if (f.size > maxMB * 1024 * 1024) {
-        alert('File too large. Max ' + maxMB + 'MB allowed.');
-        input.value = ''; return;
+      
+      const maxBytes = 5 * 1024 * 1024; // 5MB limit
+      if (f.size > maxBytes) {
+        alert(`The selected file "${f.name}" exceeds the maximum size limit of 5MB. Please choose a smaller file.\n\nالملف المختار "${f.name}" يتعدى الحد الأقصى المسموح به وهو 5 ميجابايت. يرجى اختيار ملف أصغر حجمًا.`);
+        showErr(input.id, `File exceeds 5MB limit. Please upload a smaller file. / الملف يتعدى الحد الأقصى (5 ميجابايت)`);
+        input.value = '';
+        return;
       }
+      
       let validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', ''];
       if (input.id === 'file_photo') validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', ''];
       if (!validTypes.includes(f.type) && !f.name.match(/\.(pdf|jpg|jpeg|png|heic|heif)$/i)) {
-        alert('Invalid file type.'); input.value = ''; return;
+        alert(`Invalid file type for "${f.name}". Please upload a valid document or image file.\n\nنوع الملف غير مدعوم. يرجى رفع ملف بصيغة مدعومة.`);
+        showErr(input.id, `Invalid file type. / نوع الملف غير مدعوم`);
+        input.value = '';
+        return;
       }
+      
       document.getElementById(nameId).textContent = f.name;
       document.getElementById(prevId).classList.remove('hidden');
       document.getElementById(zoneId).style.display = 'none';
@@ -5031,6 +5040,7 @@
       document.getElementById(prevId).classList.add('hidden');
       document.getElementById(zoneId).style.display = '';
       document.getElementById(nameId).textContent = '';
+      clearErr(inputId);
     }
 
     // ===== DECLARATION =====
