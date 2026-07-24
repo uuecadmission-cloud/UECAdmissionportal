@@ -4136,21 +4136,24 @@
         return generateFallbackAppId();
       }
       try {
+        // Only look at applications submitted from July 16, 2026 onwards
+        // (when the sequential ID system was officially started)
         const { data, error } = await supabaseClient
           .from('applications')
           .select('id, first_name_en, last_name_en')
           .like('id', 'APP-' + new Date().getFullYear() + '-%')
+          .gte('created_at', '2026-07-16T00:00:00.000Z')
           .order('created_at', { ascending: false })
           .limit(100);
           
         if (error) throw error;
         
-        let maxSeq = 2100; // Base start — the last real sequential ID is 2100 (Mohammed Ghonim)
+        let maxSeq = 2100; // Hardcoded floor — last confirmed real sequential ID
         if (data && data.length > 0) {
           data.forEach(row => {
             const rawId = row.id || '';
             const nameStr = `${row.first_name_en || ''} ${row.last_name_en || ''}`.toLowerCase();
-            // Skip test submissions
+            // Skip test/fake submissions
             if (nameStr.includes('test') || nameStr.includes('tsetse') ||
                 rawId.startsWith('UNASSIGNED-') || rawId.startsWith('TEST-') || rawId.startsWith('PROBE-')) {
               return;
@@ -4158,7 +4161,7 @@
             const match = rawId.match(/APP-\d+-(\d+)/);
             if (match && match[1]) {
               const seq = parseInt(match[1], 10);
-              // ONLY count sequential IDs in the official 2079-2999 range
+              // Only count IDs in the official sequential range 2079–2999
               if (seq >= 2079 && seq <= 2999 && seq > maxSeq) {
                 maxSeq = seq;
               }
