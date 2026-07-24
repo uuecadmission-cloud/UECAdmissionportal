@@ -4112,10 +4112,9 @@
       renderFunnel();
 
       fetchNextAppId().then(seqId => {
-        if (appId === fallbackId) {
-          appId = seqId;
-          document.getElementById('app-id-display').textContent = appId;
-        }
+        appId = seqId;
+        const displayEl = document.getElementById('app-id-display');
+        if (displayEl) displayEl.textContent = appId;
       });
 
       // Check active auth session
@@ -5409,8 +5408,11 @@
         let { data, step, appId: savedId, regData } = JSON.parse(saved);
         if (!data) return;
         if (confirm('A saved draft was found. Would you like to restore it?')) {
-          appId = savedId || appId;
-          document.getElementById('app-id-display').textContent = appId;
+          fetchNextAppId().then(seqId => {
+            appId = seqId;
+            const displayEl = document.getElementById('app-id-display');
+            if (displayEl) displayEl.textContent = appId;
+          });
           registrationData = regData;
 
           Object.keys(data).forEach(k => {
