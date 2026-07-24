@@ -4138,20 +4138,27 @@
       try {
         const { data, error } = await supabaseClient
           .from('applications')
-          .select('id')
+          .select('id, first_name_en, last_name_en')
           .like('id', 'APP-' + new Date().getFullYear() + '-%')
           .order('created_at', { ascending: false })
-          .limit(30);
+          .limit(50);
           
         if (error) throw error;
         
         let maxSeq = 2089; // Base start sequence
         if (data && data.length > 0) {
           data.forEach(row => {
-            const match = (row.id || '').match(/APP-\d+-(\d+)/);
+            const rawId = row.id || '';
+            const nameStr = `${row.first_name_en || ''} ${row.last_name_en || ''}`.toLowerCase();
+            // Ignore test submissions
+            if (nameStr.includes('test') || nameStr.includes('tsetse') || rawId.startsWith('UNASSIGNED-') || rawId.startsWith('TEST-')) {
+              return;
+            }
+            const match = rawId.match(/APP-\d+-(\d+)/);
             if (match && match[1]) {
               const seq = parseInt(match[1], 10);
-              if (seq > maxSeq && seq < 99999) {
+              // Sequential student IDs are in the 2000-8000 range
+              if (seq > maxSeq && seq < 9000) {
                 maxSeq = seq;
               }
             }
