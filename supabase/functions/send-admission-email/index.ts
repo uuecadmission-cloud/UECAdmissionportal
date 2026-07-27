@@ -326,7 +326,7 @@ serve(async (req) => {
           <p style="font-size: 15px; line-height: 1.6; color: #2d3748;">Thank you for completing and submitting your application to the University of East Capital (UEC). Your application number is <strong>${id}</strong>.</p>
           
           <p style="font-size: 15px; line-height: 1.6; font-weight: 700; color: #0A1F3C; margin-top: 20px; border-left: 3px solid #C5A358; padding-left: 8px;">Step 1: Payment of Application Fee</p>
-          <p style="font-size: 14px; line-height: 1.6; color: #4a5568;">To confirm your interest and move forward with your application, please pay the required application fee <strong>(EGP 2000)</strong> using <strong>ONE</strong> of the payment methods listed below:</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #4a5568;">To confirm your interest and move forward with your application, please pay the required application fee <strong>(EGP 3000)</strong> using <strong>ONE</strong> of the payment methods listed below:</p>
           <ul style="font-size: 14px; line-height: 1.6; color: #4a5568; padding-left: 20px;">
             <li>Bank Account Deposit</li>
             <li style="margin-top: 5px;">InstaPay Transfer</li>
@@ -355,7 +355,7 @@ serve(async (req) => {
           <p style="font-size: 15px; line-height: 1.8; color: #2d3748;">شكراً لإتمام وتقديم استمارة التقديم لجامعة شرق العاصمة (UEC). رقم الملف الخاص بك هو <strong>${id}</strong>.</p>
           
           <p style="font-size: 15px; line-height: 1.8; font-weight: 700; color: #0A1F3C; margin-top: 20px; border-right: 3px solid #C5A358; padding-right: 8px;">الخطوة الأولى: سداد رسوم التقديم</p>
-          <p style="font-size: 14px; line-height: 1.8; color: #4a5568;">لتأكيد رغبتك في الالتحاق والاستمرار في إجراءات التقديم، يرجى سداد رسوم التقديم المطلوبة وقدرها <strong>(2000 جنيه مصري)</strong> باستخدام <strong>إحدى</strong> طرق الدفع الموضحة أدناه:</p>
+          <p style="font-size: 14px; line-height: 1.8; color: #4a5568;">لتأكيد رغبتك في الالتحاق والاستمرار في إجراءات التقديم، يرجى سداد رسوم التقديم المطلوبة وقدرها <strong>(3000 جنيه مصري)</strong> باستخدام <strong>إحدى</strong> طرق الدفع الموضحة أدناه:</p>
           <ul style="font-size: 14px; line-height: 1.8; color: #4a5568; padding-right: 20px;">
             <li>إيداع بنكي في الحساب.</li>
             <li style="margin-top: 5px;">تحويل عبر تطبيق إنستاباي InstaPay.</li>
