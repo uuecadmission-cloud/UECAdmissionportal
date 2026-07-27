@@ -2322,6 +2322,18 @@
     <span id="notif-message"></span>
   </div>
 
+  <!-- Duplicate Application Warning Modal -->
+  <div class="modal-overlay hidden" id="duplicate-modal" style="z-index:9999;">
+    <div class="modal-card" style="max-width:500px;width:93%;padding:36px 32px;text-align:center;border-top:5px solid #c0392b;">
+      <div style="font-size:48px;margin-bottom:12px;">&#9888;&#65039;</div>
+      <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:#c0392b;margin-bottom:8px;">Duplicate Application Detected</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">A previous application was already submitted using the same phone number or national ID.</p>
+      <div id="duplicate-info" style="background:#f8f9fa;border-radius:10px;padding:18px;margin-bottom:20px;text-align:left;font-size:14px;line-height:1.9;"></div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">If you believe this is an error, please contact the admissions office at <strong>enrol@uec.edu.eg</strong></p>
+      <button class="btn btn-primary" onclick="document.getElementById('duplicate-modal').classList.add('hidden')" style="background:#c0392b;border-color:#c0392b;">Close</button>
+    </div>
+  </div>
+
   <!-- Admin Login Modal -->
   <div class="modal-overlay hidden" id="admin-login-modal">
     <div class="modal-card" style="max-width: 400px; width: 90%; padding: 30px;">
@@ -4607,7 +4619,14 @@
     function goNext() {
       // Perform validation for the current step. Proceed if valid.
       if (!validateStep(currentStep)) return;
-      if (currentStep < 6) { currentStep++; updateStepUI(); }
+      if (currentStep === 1) {
+        // Check for duplicate before leaving step 1
+        checkDuplicate().then(isDuplicate => {
+          if (!isDuplicate && currentStep < 6) { currentStep++; updateStepUI(); }
+        });
+      } else {
+        if (currentStep < 6) { currentStep++; updateStepUI(); }
+      }
     }
 
     function goBack() {
@@ -4618,6 +4637,63 @@
       // Permit jumping to any tab freely (Point 6 / non-blocking tab clicks)
       currentStep = n; 
       updateStepUI();
+    }
+
+    function showDuplicateModal(existing) {
+      const info = document.getElementById('duplicate-info');
+      const submittedDate = existing.created_at ? new Date(existing.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
+      const fullName = [existing.first_name_en, existing.second_name_en, existing.third_name_en, existing.last_name_en].filter(Boolean).join(' ');
+      const displayId = existing.id && existing.id.startsWith('UNASSIGNED') ? '' : (existing.id || '');
+      info.innerHTML = `
+        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128194; Application ID:</strong> <span style="color:#c0392b;font-weight:700;">${displayId || '—'}</span></div>
+        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128100; Name:</strong> ${fullName || '—'}</div>
+        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128222; Mobile:</strong> ${existing.mobile || '—'}</div>
+        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128231; Email:</strong> ${existing.email || '—'}</div>
+        <div><strong style="color:var(--navy);">&#128197; Submitted:</strong> ${submittedDate}</div>
+      `;
+      document.getElementById('duplicate-modal').classList.remove('hidden');
+    }
+
+    async function checkDuplicate() {
+      if (!supabaseClient) return false;
+      try {
+        const mobile = (document.getElementById('mobile')?.value || '').trim();
+        const nationalId = (document.getElementById('national_id')?.value || '').trim();
+        const passportNo = (document.getElementById('passport_no')?.value || '').trim();
+        if (!mobile && !nationalId && !passportNo) return false;
+
+        let query = supabaseClient
+          .from('applications')
+          .select('id, first_name_en, second_name_en, third_name_en, last_name_en, mobile, email, national_id, created_at')
+          .limit(5);
+
+        // Build OR filter for phone / national ID / passport
+        const orParts = [];
+        if (mobile) orParts.push(`mobile.eq.${mobile}`);
+        if (nationalId && nationalId.length >= 10) orParts.push(`national_id.eq.${nationalId}`);
+        if (passportNo) orParts.push(`passport_no.eq.${passportNo}`);
+        if (orParts.length === 0) return false;
+
+        query = query.or(orParts.join(','));
+        const { data, error } = await query;
+        if (error) { console.warn('Duplicate check error:', error); return false; }
+
+        if (data && data.length > 0) {
+          // Ignore entries that are UNASSIGNED test records with "test" name
+          const real = data.filter(r => {
+            const name = `${r.first_name_en || ''} ${r.last_name_en || ''}`.toLowerCase();
+            return !name.includes('test') && !name.includes('tsetse') && !(r.id || '').startsWith('UNASSIGNED-');
+          });
+          if (real.length > 0) {
+            showDuplicateModal(real[0]);
+            return true;
+          }
+        }
+        return false;
+      } catch (e) {
+        console.warn('Duplicate check failed:', e);
+        return false;
+      }
     }
 
     // Show or hide sibling input box
@@ -5332,6 +5408,14 @@
         };
 
         if (supabaseClient) {
+          // Final safety net: check for duplicate by phone/nationalID before inserting
+          const isDuplicate = await checkDuplicate();
+          if (isDuplicate) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origText;
+            return;
+          }
+
           // Re-fetch guaranteed fresh ID right before database insertion
           const freshId = await fetchNextAppId();
           if (freshId && freshId !== appId) {
