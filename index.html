@@ -2363,6 +2363,7 @@
       <div style="display:flex; justify-content:space-between; align-items:center; padding: 24px 30px 14px; border-bottom: 0.5px solid var(--border-light);">
         <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--navy); margin:0;" id="details-title">Application Details</h3>
         <div style="display:flex; gap:10px; align-items:center;">
+          <button id="send-email-btn" class="btn" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer; background-color:#0A1F3C; color:#C5A358; border:1px solid #C5A358;">Send Email ✉️</button>
           <button id="crm-sync-btn" class="btn btn-gold" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer;">Sync to CRM 🔄</button>
           <button id="edit-app-btn" class="btn btn-primary" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer; background-color:var(--navy); color:#fff; border:none;">Edit ✏️</button>
           <button id="cancel-edit-btn" class="btn btn-ghost hidden" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);">Cancel ✕</button>
@@ -2372,6 +2373,44 @@
       
       <div style="flex: 1; overflow-y: auto; padding: 20px 30px 30px;" id="details-content">
         <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Email Composer Modal -->
+  <div class="modal-overlay hidden" id="email-composer-modal" style="z-index:10000;">
+    <div class="modal-card" style="max-width:580px;width:95%;padding:32px 28px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border-light);padding-bottom:14px;">
+        <h3 style="font-family:'Playfair Display',serif;font-size:20px;color:var(--navy);margin:0;">Send Email to Student &#10003;&#65039;</h3>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="document.getElementById('email-composer-modal').classList.add('hidden')">Close &#10005;</button>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Recipient</label>
+        <div id="email-composer-recipient" style="background:#f8f9fa;border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--navy);font-weight:600;"></div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Quick Template</label>
+        <select id="email-template-select" onchange="applyEmailTemplate(this.value)" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+          <option value="">&#8212; Select a template or write custom &#8212;</option>
+          <option value="missing_docs">&#128196; Missing Documents Request</option>
+          <option value="interview">&#128197; Interview Invitation</option>
+          <option value="status_update">&#9989; Status Update / Acceptance</option>
+          <option value="fee_reminder">&#128179; Fee Payment Reminder (EGP 3000)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Email Subject <span style="color:var(--error)">*</span></label>
+        <input type="text" id="email-composer-subject" placeholder="Enter email subject..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Message Body <span style="color:var(--error)">*</span></label>
+        <textarea id="email-composer-body" rows="8" placeholder="Write your message here..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">The email will be wrapped in official UEC branding automatically.</p>
+      </div>
+      <div id="email-composer-status" style="margin-bottom:12px;font-size:13px;display:none;padding:8px 12px;border-radius:6px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="document.getElementById('email-composer-modal').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" id="email-composer-send-btn" onclick="sendCustomEmail()" style="background:#0A1F3C;">Send Email &#10003;&#65039;</button>
       </div>
     </div>
   </div>
@@ -5722,6 +5761,11 @@
       btn.disabled = true;
       btn.textContent = 'Saving...';
 
+      // Check if admin changed the Application ID
+      const newIdEl = document.getElementById('edit_app_id');
+      const newId = newIdEl ? newIdEl.value.trim() : id;
+      const idChanged = newId && newId !== id;
+
       const fieldsToSave = [
         'first_name_en', 'second_name_en', 'third_name_en', 'last_name_en',
         'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar',
@@ -5745,27 +5789,42 @@
       });
 
       try {
-        const { error } = await supabaseClient
-          .from('applications')
-          .update(updatedFields)
-          .eq('id', id);
+        let finalId = id;
 
-        if (error) {
-          if (error.message.includes('admin_notes') || error.message.includes('column')) {
-            console.warn('Saving failed due to admin_notes. Retrying without admin_notes column...');
-            delete updatedFields['admin_notes'];
-            const { error: retryError } = await supabaseClient
-              .from('applications')
-              .update(updatedFields)
-              .eq('id', id);
-            
-            if (retryError) throw retryError;
-            alert('Changes saved successfully! (Note: admin_notes was NOT saved because you need to create the admin_notes column in Supabase).');
-          } else {
-            throw error;
-          }
+        if (idChanged) {
+          // Primary key rename: fetch full old record, insert with new ID, delete old
+          const { data: oldRecord, error: fetchError } = await supabaseClient
+            .from('applications').select('*').eq('id', id).single();
+          if (fetchError) throw fetchError;
+
+          const newRecord = { ...oldRecord, ...updatedFields, id: newId };
+          const { error: insertError } = await supabaseClient
+            .from('applications').insert([newRecord]);
+          if (insertError) throw new Error('Could not create record with new ID: ' + insertError.message);
+
+          const { error: deleteError } = await supabaseClient
+            .from('applications').delete().eq('id', id);
+          if (deleteError) throw new Error('New ID saved but could not delete old record: ' + deleteError.message);
+
+          finalId = newId;
+          alert(`Application ID changed from ${id} to ${newId} and all data saved.`);
         } else {
-          alert('Changes saved successfully!');
+          const { error } = await supabaseClient
+            .from('applications').update(updatedFields).eq('id', id);
+
+          if (error) {
+            if (error.message.includes('admin_notes') || error.message.includes('column')) {
+              delete updatedFields['admin_notes'];
+              const { error: retryError } = await supabaseClient
+                .from('applications').update(updatedFields).eq('id', id);
+              if (retryError) throw retryError;
+              alert('Changes saved! (admin_notes column not found — please add it in Supabase).');
+            } else {
+              throw error;
+            }
+          } else {
+            alert('Changes saved successfully!');
+          }
         }
 
         // Reset editing state
@@ -5779,9 +5838,9 @@
         if (syncBtn) syncBtn.disabled = false;
         if (closeBtn) closeBtn.disabled = false;
 
-        // Reload data and refresh modal
+        // Reload data and refresh modal with potentially new ID
         await showAdmin();
-        showApplicationDetails(id);
+        showApplicationDetails(finalId);
 
       } catch (err) {
         console.error(err);
@@ -5791,10 +5850,121 @@
       }
     }
 
+    // ===== EMAIL COMPOSER FUNCTIONS =====
+
+    let _emailComposerRecord = null;
+
+    function openEmailComposer(r) {
+      _emailComposerRecord = r;
+      const name = [r.first_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Student';
+      document.getElementById('email-composer-recipient').textContent = `${name} — ${r.email || 'No email on record'}`;
+      document.getElementById('email-composer-subject').value = '';
+      document.getElementById('email-composer-body').value = '';
+      document.getElementById('email-template-select').value = '';
+      const status = document.getElementById('email-composer-status');
+      status.style.display = 'none';
+      const sendBtn = document.getElementById('email-composer-send-btn');
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send Email ✉️';
+      document.getElementById('email-composer-modal').classList.remove('hidden');
+    }
+
+    function applyEmailTemplate(type) {
+      const r = _emailComposerRecord || {};
+      const name = [r.first_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Applicant';
+      const appId = r.id || '—';
+      const subjectEl = document.getElementById('email-composer-subject');
+      const bodyEl = document.getElementById('email-composer-body');
+      if (!type) return;
+
+      const templates = {
+        missing_docs: {
+          subject: `Action Required: Missing Documents – Application ${appId}`,
+          body: `Dear ${name},\n\nThank you for submitting your application to the University of East Capital (UEC).\n\nAfter reviewing your application (ID: ${appId}), we found that some required documents are missing or incomplete. Please submit the following as soon as possible:\n\n- [ ] National ID / Passport copy\n- [ ] High school certificate (original + certified copy)\n- [ ] High school transcript\n- [ ] Personal photo (white background)\n\nPlease send the documents to enrol@uec.edu.eg or visit the Admissions Office (Building 1, Room 204).\n\nIf you have any questions, please call us at 17523.\n\nBest regards,\nUEC Admissions Team`
+        },
+        interview: {
+          subject: `Interview Invitation – Application ${appId}`,
+          body: `Dear ${name},\n\nWe are pleased to inform you that your application (ID: ${appId}) has been reviewed and you are invited to attend an interview.\n\nInterview Details:\n- Date: [Please insert date]\n- Time: [Please insert time]\n- Location: UEC Campus, Admissions Building, Room 101\n\nPlease bring your original documents and a copy of this email.\n\nTo confirm your attendance, please reply to this email or call 17523.\n\nWe look forward to meeting you!\n\nBest regards,\nUEC Admissions Team`
+        },
+        status_update: {
+          subject: `Application Status Update – ${appId}`,
+          body: `Dear ${name},\n\nWe are writing to inform you that the status of your application (ID: ${appId}) has been updated.\n\nCurrent Status: [Please insert status — e.g., Approved / Under Review / Pending Payment]\n\n[Add any additional details or next steps here]\n\nFor any questions, please do not hesitate to contact us at admissions@uec.edu.eg or call 17523.\n\nBest regards,\nUEC Admissions Team`
+        },
+        fee_reminder: {
+          subject: `Reminder: Application Fee Payment Required – ${appId}`,
+          body: `Dear ${name},\n\nThis is a friendly reminder that your application (ID: ${appId}) is awaiting the application fee payment of EGP 3,000 to be fully processed.\n\nPayment Methods:\n1. Bank Deposit: Misr Bank – Account No. 7700001000011062 (IBAN: EG740002077007700001000011062)\n2. InstaPay Transfer\n\nAfter payment, please send the receipt to Accounting@uec.edu.eg or deliver it in person to the Students Accounts Office (Room 204).\n\nIf you have already paid, please disregard this message and contact us to confirm receipt.\n\nThank you,\nUEC Admissions Team`
+        }
+      };
+
+      const t = templates[type];
+      if (t) {
+        subjectEl.value = t.subject;
+        bodyEl.value = t.body;
+      }
+    }
+
+    async function sendCustomEmail() {
+      const r = _emailComposerRecord;
+      if (!r || !r.email) {
+        alert('No student email found for this application.');
+        return;
+      }
+      const subject = document.getElementById('email-composer-subject').value.trim();
+      const body = document.getElementById('email-composer-body').value.trim();
+      if (!subject) { alert('Please enter an email subject.'); return; }
+      if (!body) { alert('Please write the message body.'); return; }
+
+      const sendBtn = document.getElementById('email-composer-send-btn');
+      const statusEl = document.getElementById('email-composer-status');
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending...';
+      statusEl.style.display = 'none';
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-admission-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+          body: JSON.stringify({
+            email: r.email,
+            first_name_en: r.first_name_en || '',
+            last_name_en: r.last_name_en || '',
+            id: r.id || '',
+            custom_subject: subject,
+            custom_body: body,
+            sync_only: false
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          statusEl.style.display = 'block';
+          statusEl.style.background = '#d4edda';
+          statusEl.style.color = '#155724';
+          statusEl.textContent = `✓ Email sent successfully to ${r.email}`;
+          sendBtn.textContent = '✓ Sent!';
+          sendBtn.style.background = 'var(--success)';
+        } else {
+          throw new Error(data.error || 'Unknown error');
+        }
+      } catch (err) {
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#f8d7da';
+        statusEl.style.color = '#721c24';
+        statusEl.textContent = '✕ Failed to send: ' + err.message;
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Retry ✉️';
+      }
+    }
+
     function showApplicationDetails(id) {
       const app = applications.find(x => x.id === id);
       if (!app || !app.raw) return;
       const r = app.raw;
+
+      const sendEmailBtn = document.getElementById('send-email-btn');
+      if (sendEmailBtn) {
+        sendEmailBtn.onclick = () => openEmailComposer(r);
+        sendEmailBtn.disabled = isEditing;
+      }
 
       const editBtn = document.getElementById('edit-app-btn');
       const cancelBtn = document.getElementById('cancel-edit-btn');
@@ -5917,6 +6087,16 @@
       }
       
       let html = `
+        <div class="details-section-title">Application ID</div>
+        <div class="details-grid" style="margin-bottom:16px;">
+          ${!isEditing
+            ? `<div class="details-item" style="grid-column:span 2;"><label>Application ID</label><span style="font-weight:700;color:var(--navy);font-size:16px;">${r.id || '—'}</span></div>`
+            : `<div class="details-item" style="grid-column:span 2;">
+                <label>Application ID <span style="color:#c0392b;font-size:11px;">(⚠️ Changing this renames the primary key in the database)</span></label>
+                <input type="text" id="edit_app_id" value="${r.id || ''}" style="width:100%;padding:6px;border:1px solid #c0392b;border-radius:4px;font-weight:700;font-size:14px;color:var(--navy);">
+              </div>`
+          }
+        </div>
         <div class="details-section-title">Personal Information</div>
         <div class="details-grid">
           ${nameHTML}

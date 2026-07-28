@@ -282,11 +282,55 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password, resend_copy_to } = payload
+    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password, resend_copy_to, custom_subject, custom_body } = payload
 
     let resData = null;
     const recipientEmail = resend_copy_to || email;
     const recipientName = resend_copy_to ? "Admissions Office (Copy)" : `${first_name_en} ${last_name_en}`;
+
+    // ── CUSTOM EMAIL PATH ──────────────────────────────────────────────────────
+    if (custom_subject && custom_body) {
+      const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
+      if (!BREVO_API_KEY) throw new Error('Missing BREVO_API_KEY')
+
+      const bodyLines = custom_body.replace(/\n/g, '<br>');
+      const customHtml = `
+        <div style="font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;max-width:650px;margin:20px auto;border:1px solid #e0e6ed;padding:30px;border-radius:12px;background:#ffffff;color:#2d3748;">
+          <div style="text-align:center;border-bottom:2px solid #C5A358;padding-bottom:20px;margin-bottom:28px;">
+            <img src="https://uec-admission-portal.pages.dev/white%20back.png" alt="UEC Logo" style="max-height:80px;width:auto;margin-bottom:10px;"/>
+            <h1 style="color:#0A1F3C;margin:0;font-size:22px;font-weight:700;">UNIVERSITY OF EAST CAPITAL</h1>
+            <p style="color:#C5A358;margin:5px 0 0 0;font-size:13px;text-transform:uppercase;font-weight:600;letter-spacing:1px;">Admissions Office</p>
+          </div>
+          <div style="font-size:15px;line-height:1.8;color:#2d3748;">${bodyLines}</div>
+          <div style="background:#0A1F3C;color:#fff;border-radius:8px;padding:20px;margin-top:28px;font-size:13px;">
+            <p style="color:#C5A358;font-weight:700;margin:0 0 10px;">Contact Us</p>
+            <p style="margin:4px 0;">&#128222; Hotline: <a href="tel:17523" style="color:#C5A358;font-weight:700;">17523</a></p>
+            <p style="margin:4px 0;">&#128231; <a href="mailto:admissions@uec.edu.eg" style="color:#C5A358;">admissions@uec.edu.eg</a></p>
+            <p style="margin:4px 0;">&#127758; <a href="https://www.uec.edu.eg" style="color:#C5A358;">www.uec.edu.eg</a></p>
+          </div>
+          <p style="text-align:center;font-size:11px;color:#a0aec0;margin-top:20px;">&copy; 2026 University of East Capital. All rights reserved.</p>
+        </div>`;
+
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'api-key': BREVO_API_KEY },
+        body: JSON.stringify({
+          sender: { name: 'UEC Admissions', email: 'enrol@uec.edu.eg' },
+          to: [{ email: recipientEmail, name: recipientName }],
+          cc: [{ email: 'enrol@uec.edu.eg', name: 'UEC Admissions Office' }],
+          subject: custom_subject,
+          htmlContent: customHtml
+        })
+      });
+      resData = await res.json();
+      if (!res.ok) throw new Error(`Brevo API error: ${JSON.stringify(resData)}`);
+
+      return new Response(JSON.stringify({ success: true, message: 'Custom email sent', data: resData }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200
+      });
+    }
+    // ── END CUSTOM EMAIL PATH ─────────────────────────────────────────────────
+
     const mailSubject = resend_copy_to 
       ? `[Copy] UEC Admission Application Received - ID: ${id}` 
       : `UEC Admission Application Received - ID: ${id}`;
