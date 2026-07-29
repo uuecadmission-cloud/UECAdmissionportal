@@ -282,55 +282,119 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password, resend_copy_to, custom_subject, custom_body } = payload
+
+    if (payload.custom_email) {
+      const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
+      if (!BREVO_API_KEY) {
+        throw new Error('Missing BREVO_API_KEY environment variable in Supabase')
+      }
+
+      const recipientEmail = payload.to_email || payload.email;
+      const recipientName = payload.recipient_name || `${payload.first_name_en || ''} ${payload.last_name_en || ''}`.trim() || 'Student';
+      const mailSubject = payload.subject || 'Message from UEC Admissions';
+
+      let formattedBody = payload.body_html || payload.custom_message || '';
+      if (!formattedBody.includes('<div') && !formattedBody.includes('<p>')) {
+        formattedBody = formattedBody.split('\n').map((line: string) => `<p style="margin:0 0 10px 0;">${line}</p>`).join('');
+      }
+
+      const emailHtml = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 20px auto; border: 1px solid #e0e6ed; padding: 30px; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <!-- Header / Logo -->
+        <div style="text-align: center; border-bottom: 2px solid #C5A358; padding-bottom: 20px; margin-bottom: 30px;">
+          <img src="https://uec-admission-portal.pages.dev/white%20back.png" alt="UEC Logo" style="max-height: 80px; width: auto; margin-bottom: 10px;" />
+          <h1 style="color: #0A1F3C; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">UNIVERSITY OF EAST CAPITAL</h1>
+          <p style="color: #C5A358; margin: 5px 0 0 0; font-size: 13px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Admissions Office Notification</p>
+        </div>
+
+        <!-- Custom Content -->
+        <div style="font-size: 15px; line-height: 1.7; color: #2d3748; margin-bottom: 30px;">
+          ${formattedBody}
+        </div>
+
+        <!-- Footer / Contact Block -->
+        <div style="background-color: #0A1F3C; color: #ffffff; border-radius: 8px; padding: 25px; margin-top: 30px; font-size: 13px; line-height: 1.6;">
+          <h4 style="margin: 0 0 15px 0; color: #C5A358; font-size: 14px; text-transform: uppercase; font-weight: 700; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">Contact Information / معلومات الاتصال</h4>
+          <table style="width: 100%; border-collapse: collapse; color: #ffffff;">
+            <tr>
+              <td style="padding: 5px 0; font-weight: bold; width: 35%;">Hotline:</td>
+              <td style="padding: 5px 0;"><a href="tel:17523" style="color: #C5A358; text-decoration: none; font-weight: bold;">17523</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; font-weight: bold; vertical-align: top;">Mobile Numbers:</td>
+              <td style="padding: 5px 0; color: #e2e8f0;">
+                01505123666 / 01515429232 / <br/>
+                01515429239 / 01505123555
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; font-weight: bold;">WhatsApp:</td>
+              <td style="padding: 5px 0;"><a href="https://wa.me/201505123555" style="color: #C5A358; text-decoration: none; font-weight: bold;">01505123555</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; font-weight: bold;">Admission Email:</td>
+              <td style="padding: 5px 0;"><a href="mailto:admissions@uec.edu.eg" style="color: #C5A358; text-decoration: none;">admissions@uec.edu.eg</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; font-weight: bold;">Website:</td>
+              <td style="padding: 5px 0;"><a href="https://www.uec.edu.eg" target="_blank" style="color: #C5A358; text-decoration: none;">www.uec.edu.eg</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; font-weight: bold; vertical-align: top;">Address:</td>
+              <td style="padding: 5px 0; color: #cbd5e0; font-size: 12px;">KM 31 Cairo - Ismailia Desert Road, Cairo-Egypt</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; font-size: 11px; color: #a0aec0; margin-top: 30px; line-height: 1.5;">
+          <p style="margin: 0 0 5px 0;">This is an official communication from UEC Admissions Office.</p>
+          <p style="margin: 0;">&copy; 2026 University of East Capital. All rights reserved.</p>
+        </div>
+      </div>
+      `;
+
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'api-key': BREVO_API_KEY,
+        },
+        body: JSON.stringify({
+          sender: {
+            name: 'UEC Admissions',
+            email: 'enrol@uec.edu.eg',
+          },
+          to: [
+            {
+              email: recipientEmail,
+              name: recipientName,
+            }
+          ],
+          subject: mailSubject,
+          htmlContent: emailHtml,
+        }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(`Brevo API error: ${JSON.stringify(resData)}`);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Custom email sent successfully', data: resData }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    const { email, first_name_en, last_name_en, id, sync_only, portal_username, portal_password, resend_copy_to } = payload
 
     let resData = null;
     const recipientEmail = resend_copy_to || email;
     const recipientName = resend_copy_to ? "Admissions Office (Copy)" : `${first_name_en} ${last_name_en}`;
-
-    // ── CUSTOM EMAIL PATH ──────────────────────────────────────────────────────
-    if (custom_subject && custom_body) {
-      const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
-      if (!BREVO_API_KEY) throw new Error('Missing BREVO_API_KEY')
-
-      const bodyLines = custom_body.replace(/\n/g, '<br>');
-      const customHtml = `
-        <div style="font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;max-width:650px;margin:20px auto;border:1px solid #e0e6ed;padding:30px;border-radius:12px;background:#ffffff;color:#2d3748;">
-          <div style="text-align:center;border-bottom:2px solid #C5A358;padding-bottom:20px;margin-bottom:28px;">
-            <img src="https://uec-admission-portal.pages.dev/white%20back.png" alt="UEC Logo" style="max-height:80px;width:auto;margin-bottom:10px;"/>
-            <h1 style="color:#0A1F3C;margin:0;font-size:22px;font-weight:700;">UNIVERSITY OF EAST CAPITAL</h1>
-            <p style="color:#C5A358;margin:5px 0 0 0;font-size:13px;text-transform:uppercase;font-weight:600;letter-spacing:1px;">Admissions Office</p>
-          </div>
-          <div style="font-size:15px;line-height:1.8;color:#2d3748;">${bodyLines}</div>
-          <div style="background:#0A1F3C;color:#fff;border-radius:8px;padding:20px;margin-top:28px;font-size:13px;">
-            <p style="color:#C5A358;font-weight:700;margin:0 0 10px;">Contact Us</p>
-            <p style="margin:4px 0;">&#128222; Hotline: <a href="tel:17523" style="color:#C5A358;font-weight:700;">17523</a></p>
-            <p style="margin:4px 0;">&#128231; <a href="mailto:admissions@uec.edu.eg" style="color:#C5A358;">admissions@uec.edu.eg</a></p>
-            <p style="margin:4px 0;">&#127758; <a href="https://www.uec.edu.eg" style="color:#C5A358;">www.uec.edu.eg</a></p>
-          </div>
-          <p style="text-align:center;font-size:11px;color:#a0aec0;margin-top:20px;">&copy; 2026 University of East Capital. All rights reserved.</p>
-        </div>`;
-
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'api-key': BREVO_API_KEY },
-        body: JSON.stringify({
-          sender: { name: 'UEC Admissions', email: 'enrol@uec.edu.eg' },
-          to: [{ email: recipientEmail, name: recipientName }],
-          cc: [{ email: 'enrol@uec.edu.eg', name: 'UEC Admissions Office' }],
-          subject: custom_subject,
-          htmlContent: customHtml
-        })
-      });
-      resData = await res.json();
-      if (!res.ok) throw new Error(`Brevo API error: ${JSON.stringify(resData)}`);
-
-      return new Response(JSON.stringify({ success: true, message: 'Custom email sent', data: resData }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200
-      });
-    }
-    // ── END CUSTOM EMAIL PATH ─────────────────────────────────────────────────
-
     const mailSubject = resend_copy_to 
       ? `[Copy] UEC Admission Application Received - ID: ${id}` 
       : `UEC Admission Application Received - ID: ${id}`;
@@ -370,7 +434,7 @@ serve(async (req) => {
           <p style="font-size: 15px; line-height: 1.6; color: #2d3748;">Thank you for completing and submitting your application to the University of East Capital (UEC). Your application number is <strong>${id}</strong>.</p>
           
           <p style="font-size: 15px; line-height: 1.6; font-weight: 700; color: #0A1F3C; margin-top: 20px; border-left: 3px solid #C5A358; padding-left: 8px;">Step 1: Payment of Application Fee</p>
-          <p style="font-size: 14px; line-height: 1.6; color: #4a5568;">To confirm your interest and move forward with your application, please pay the required application fee <strong>(EGP 3000)</strong> using <strong>ONE</strong> of the payment methods listed below:</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #4a5568;">To confirm your interest and move forward with your application, please pay the required application fee <strong>(EGP 2000)</strong> using <strong>ONE</strong> of the payment methods listed below:</p>
           <ul style="font-size: 14px; line-height: 1.6; color: #4a5568; padding-left: 20px;">
             <li>Bank Account Deposit</li>
             <li style="margin-top: 5px;">InstaPay Transfer</li>
@@ -399,7 +463,7 @@ serve(async (req) => {
           <p style="font-size: 15px; line-height: 1.8; color: #2d3748;">شكراً لإتمام وتقديم استمارة التقديم لجامعة شرق العاصمة (UEC). رقم الملف الخاص بك هو <strong>${id}</strong>.</p>
           
           <p style="font-size: 15px; line-height: 1.8; font-weight: 700; color: #0A1F3C; margin-top: 20px; border-right: 3px solid #C5A358; padding-right: 8px;">الخطوة الأولى: سداد رسوم التقديم</p>
-          <p style="font-size: 14px; line-height: 1.8; color: #4a5568;">لتأكيد رغبتك في الالتحاق والاستمرار في إجراءات التقديم، يرجى سداد رسوم التقديم المطلوبة وقدرها <strong>(3000 جنيه مصري)</strong> باستخدام <strong>إحدى</strong> طرق الدفع الموضحة أدناه:</p>
+          <p style="font-size: 14px; line-height: 1.8; color: #4a5568;">لتأكيد رغبتك في الالتحاق والاستمرار في إجراءات التقديم، يرجى سداد رسوم التقديم المطلوبة وقدرها <strong>(2000 جنيه مصري)</strong> باستخدام <strong>إحدى</strong> طرق الدفع الموضحة أدناه:</p>
           <ul style="font-size: 14px; line-height: 1.8; color: #4a5568; padding-right: 20px;">
             <li>إيداع بنكي في الحساب.</li>
             <li style="margin-top: 5px;">تحويل عبر تطبيق إنستاباي InstaPay.</li>

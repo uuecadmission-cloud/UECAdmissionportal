@@ -5319,9 +5319,20 @@
 
     // ===== SUBMIT =====
     async function submitForm() {
-      if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4) || !validateStep(5)) {
-        alert('Please review and fix validation errors before submitting.');
-        return;
+      const stepNames = [
+        'Step 1: Personal & Contact Information',
+        'Step 2: Academic Information',
+        'Step 3: Program Preferences',
+        'Step 4: Parent / Guardian Information',
+        'Step 5: Document Uploads'
+      ];
+
+      for (let s = 1; s <= 5; s++) {
+        if (!validateStep(s)) {
+          alert(`Please review and fix validation errors in ${stepNames[s - 1]}.`);
+          goStep(s);
+          return;
+        }
       }
 
       if (!document.getElementById('declaration').checked) {
