@@ -2300,11 +2300,12 @@
               <th>Edu System</th>
               <th>Status</th>
               <th>Date</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="admin-tbody">
             <tr>
-              <td colspan="8" style="text-align:center;color:var(--text-light);padding:24px">No applications yet. Submit the form to see data here.</td>
+              <td colspan="9" style="text-align:center;color:var(--text-light);padding:24px">No applications yet. Submit the form to see data here.</td>
             </tr>
           </tbody>
         </table>
@@ -2359,13 +2360,14 @@
 
   <!-- Admin Details Modal -->
   <div class="modal-overlay hidden" id="admin-details-modal">
-    <div class="modal-card" style="max-width: 800px; width:90%; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="modal-card" style="max-width: 880px; width:92%; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
       <div style="display:flex; justify-content:space-between; align-items:center; padding: 24px 30px 14px; border-bottom: 0.5px solid var(--border-light);">
         <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--navy); margin:0;" id="details-title">Application Details</h3>
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <button id="send-email-btn" class="btn" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer; background-color:#0A1F3C; color:#C5A358; border:1px solid #C5A358;">Send Email ✉️</button>
           <button id="crm-sync-btn" class="btn btn-gold" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer;">Sync to CRM 🔄</button>
           <button id="edit-app-btn" class="btn btn-primary" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer; background-color:var(--navy); color:#fff; border:none;">Edit ✏️</button>
+          <button id="delete-app-btn" class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-radius:4px; font-weight:600; cursor:pointer; color:var(--error); border-color:rgba(192, 57, 43, 0.4);">Delete 🗑️</button>
           <button id="cancel-edit-btn" class="btn btn-ghost hidden" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);">Cancel ✕</button>
           <button id="close-details-btn" class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-color:var(--border-light);" onclick="closeAdminDetails()">Close ✕</button>
         </div>
@@ -2377,40 +2379,66 @@
     </div>
   </div>
 
-  <!-- Custom Email Composer Modal -->
-  <div class="modal-overlay hidden" id="email-composer-modal" style="z-index:10000;">
-    <div class="modal-card" style="max-width:580px;width:95%;padding:32px 28px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border-light);padding-bottom:14px;">
-        <h3 style="font-family:'Playfair Display',serif;font-size:20px;color:var(--navy);margin:0;">Send Email to Student &#10003;&#65039;</h3>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="document.getElementById('email-composer-modal').classList.add('hidden')">Close &#10005;</button>
+  <!-- Admin Email Composer Modal -->
+  <div class="modal-overlay hidden" id="admin-email-modal" style="z-index: 11000;">
+    <div class="modal-card" style="max-width: 700px; width:90%; max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 20px 24px; border-bottom: 1px solid var(--border-light); background-color: var(--navy); color: #fff;">
+        <h3 style="font-family:'Playfair Display',serif; font-size:20px; color:#fff; margin:0;">Send Custom Email to Student ✉️</h3>
+        <button class="btn btn-ghost" style="color:#fff; border-color:rgba(255,255,255,0.3); padding:4px 10px; font-size:12px;" onclick="closeAdminEmailModal()">Close ✕</button>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Recipient</label>
-        <div id="email-composer-recipient" style="background:#f8f9fa;border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--navy);font-weight:600;"></div>
+
+      <div style="flex: 1; overflow-y: auto; padding: 20px 24px;" id="admin-email-form">
+        <div class="mb16">
+          <label style="font-weight:600; font-size:13px; color:var(--text-muted); display:block; margin-bottom:4px;">Recipient Email:</label>
+          <input type="email" id="email_recipient" class="input-field" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background-color:#f8fafc;" readonly>
+        </div>
+
+        <div class="mb16">
+          <label style="font-weight:600; font-size:13px; color:var(--text-muted); display:block; margin-bottom:4px;">Email Template Preset:</label>
+          <select id="email_template_preset" onchange="onEmailTemplateChange(this.value)" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background-color:#fff;">
+            <option value="custom">Custom Message (Blank)</option>
+            <option value="missing_docs">Missing Documents Request / استكمال المستندات</option>
+            <option value="interview_invite">Admission Interview Invitation / دعوة للمقابلة الشخصية</option>
+            <option value="status_update">Application Status Update / تحديث حالة الطلب</option>
+            <option value="fee_reminder">Application Fee Reminder / تذكير بسداد رسوم التقديم</option>
+          </select>
+        </div>
+
+        <div class="mb16">
+          <label style="font-weight:600; font-size:13px; color:var(--text-muted); display:block; margin-bottom:4px;">Subject Line:</label>
+          <input type="text" id="email_subject" class="input-field" placeholder="Enter email subject line..." style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+        </div>
+
+        <div class="mb16">
+          <label style="font-weight:600; font-size:13px; color:var(--text-muted); display:block; margin-bottom:4px;">Email Body Content (Text or HTML):</label>
+          <textarea id="email_body" style="width:100%; min-height:180px; padding:10px 12px; border:1px solid var(--border); border-radius:6px; font-family:inherit; font-size:14px; line-height:1.5;" placeholder="Type your custom email message to the student here..."></textarea>
+          <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;">Tip: Text linebreaks are auto-converted, or you can use HTML tags (&lt;b&gt;, &lt;p&gt;, &lt;a&gt;) for rich styling.</span>
+        </div>
+
+        <div id="email-send-status" class="err-msg mt8" style="display:block; text-align:center; font-size:13px;"></div>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Quick Template</label>
-        <select id="email-template-select" onchange="applyEmailTemplate(this.value)" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
-          <option value="">&#8212; Select a template or write custom &#8212;</option>
-          <option value="missing_docs">&#128196; Missing Documents Request</option>
-          <option value="interview">&#128197; Interview Invitation</option>
-          <option value="status_update">&#9989; Status Update / Acceptance</option>
-          <option value="fee_reminder">&#128179; Fee Payment Reminder (EGP 3000)</option>
-        </select>
+
+      <div style="padding: 16px 24px; border-top: 1px solid var(--border-light); background-color: #f8fafc; display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn btn-ghost" onclick="closeAdminEmailModal()">Cancel</button>
+        <button id="btn-submit-custom-email" class="btn btn-primary" style="background-color:#2b6cb0; color:#fff;" onclick="sendCustomStudentEmail()">Send Email Now 🚀</button>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Email Subject <span style="color:var(--error)">*</span></label>
-        <input type="text" id="email-composer-subject" placeholder="Enter email subject..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;">
+    </div>
+  </div>
+
+  <!-- Admin Delete Confirmation Modal -->
+  <div class="modal-overlay hidden" id="admin-delete-modal" style="z-index: 12000;">
+    <div class="modal-card" style="max-width: 480px; width:90%; padding: 28px 24px; text-align:center;">
+      <div style="font-size: 48px; margin-bottom: 8px;">🗑️</div>
+      <h3 style="font-family:'Playfair Display',serif; font-size:22px; color:var(--navy); margin-bottom:8px;">Delete Application</h3>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:16px;">
+        Are you sure you want to permanently delete application <strong id="delete-app-id-text" style="color:var(--error);"></strong> for <strong id="delete-app-name-text"></strong>?
+      </p>
+      <div style="background-color:#FFF5F5; border:1px solid #FEB2B2; border-radius:8px; padding:10px 14px; font-size:12px; color:var(--error); font-weight:600; text-align:left; margin-bottom:20px;">
+        ⚠️ Warning: This application and all associated records will be permanently removed. This action cannot be undone.
       </div>
-      <div style="margin-bottom:20px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Message Body <span style="color:var(--error)">*</span></label>
-        <textarea id="email-composer-body" rows="8" placeholder="Write your message here..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">The email will be wrapped in official UEC branding automatically.</p>
-      </div>
-      <div id="email-composer-status" style="margin-bottom:12px;font-size:13px;display:none;padding:8px 12px;border-radius:6px;"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn btn-ghost" onclick="document.getElementById('email-composer-modal').classList.add('hidden')">Cancel</button>
-        <button class="btn btn-primary" id="email-composer-send-btn" onclick="sendCustomEmail()" style="background:#0A1F3C;">Send Email &#10003;&#65039;</button>
+      <div style="display:flex; justify-content:center; gap:12px;">
+        <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+        <button id="confirm-delete-btn" class="btn btn-primary" style="background-color:var(--error); color:#fff; border:none;" onclick="processDeleteApplication()">Yes, Delete Application</button>
       </div>
     </div>
   </div>
@@ -5977,6 +6005,12 @@
         sendEmailBtn.disabled = isEditing;
       }
 
+      const deleteBtn = document.getElementById('delete-app-btn');
+      if (deleteBtn) {
+        deleteBtn.onclick = (e) => confirmDeleteApplication(id, e);
+        deleteBtn.disabled = isEditing;
+      }
+
       const editBtn = document.getElementById('edit-app-btn');
       const cancelBtn = document.getElementById('cancel-edit-btn');
       const closeBtn = document.getElementById('close-details-btn');
@@ -6192,6 +6226,62 @@
       document.getElementById('admin-details-modal').classList.remove('hidden');
     }
 
+    // ===== ADMIN DELETE APPLICATION FUNCTIONS =====
+    let pendingDeleteId = null;
+
+    function confirmDeleteApplication(id, event) {
+      if (event) event.stopPropagation();
+      const app = applications.find(a => a.id === id);
+      if (!app) return;
+      pendingDeleteId = id;
+
+      document.getElementById('delete-app-id-text').textContent = app.displayId || app.id;
+      document.getElementById('delete-app-name-text').textContent = app.name || 'Applicant';
+      document.getElementById('admin-delete-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById('admin-delete-modal').classList.add('hidden');
+    }
+
+    async function processDeleteApplication() {
+      if (!pendingDeleteId) return;
+      const id = pendingDeleteId;
+      const btn = document.getElementById('confirm-delete-btn');
+      const origText = btn.textContent;
+
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      try {
+        if (supabaseClient) {
+          const { error } = await supabaseClient
+            .from('applications')
+            .delete()
+            .or(`id.eq.${id},application_id.eq.${id}`);
+
+          if (error) throw error;
+        }
+
+        // Remove from local array
+        applications = applications.filter(a => a.id !== id);
+
+        closeDeleteModal();
+        closeAdminDetails();
+
+        alert('✓ Application deleted successfully.');
+        updateStats();
+        renderTable();
+      } catch (err) {
+        console.error('Failed to delete application:', err);
+        alert('Failed to delete application: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+
     async function showAdmin() {
       if (!isAdminAuthenticated) {
         document.getElementById('admin_user').value = '';
@@ -6216,7 +6306,7 @@
       document.getElementById('admin-view').classList.add('active');
       document.getElementById('admin-view').style.display = 'flex';
       
-      const loadingRow = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:24px">' +
+      const loadingRow = '<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:24px">' +
         (supabaseClient ? 'Loading live data from Supabase...' : '⚠️ Database not available — check internet connection.') +
         '</td></tr>';
       document.getElementById('admin-tbody').innerHTML = loadingRow;
@@ -6285,7 +6375,7 @@
       });
       let tbody = document.getElementById('admin-tbody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:24px">No applications match the filter criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:24px">No applications match the filter criteria.</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(a => `
@@ -6302,6 +6392,9 @@
         </span>
       </td>
       <td>${a.date || '—'}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px; color:var(--error); border-color:rgba(192, 57, 43, 0.4);" onclick="confirmDeleteApplication('${a.id}', event)" title="Delete application">Delete 🗑️</button>
+      </td>
     </tr>`).join('');
     }
 
