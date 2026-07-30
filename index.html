@@ -2458,6 +2458,17 @@
   </div><!-- /#app -->
 
   <script>
+    // ===== SECURITY: XSS PREVENTION UTILITY =====
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // ===== EMBEDDED SPREADSHEET DATASETS =====
     const DATA_HIGH_SCHOOLS = ["ACIC International - Global Paradigm Schools", "Al Andalous International School", "Al Bashaer International School", "American City International School", "American International Schools", "American School of Egypt", "Bedayia International School", "Brighton British International School", "British Columbia Canadian International School", "British International College of Cairo (BICC)", "British Modern School (BMS)", "British Ramses International School", "British School in Cairo", "British School of Egypt (BSE)", "Cairo British School", "Cairo English School (CES)", "Canadian International School of Egypt", "Capital International School", "Citadel International School", "College de la Sainte Famille - Jesuites", "Collège de La Mère de Dieu", "Collège de la Salle", "Concord International College", "Creatives International School", "Damietta International School", "Delta American International School", "Dome International School", "Dover International School", "EPIC School", "Egypt British International School (EBIS)", "Egypt Integrated School", "El Alsson School New Giza", "El Kenana International School", "Ethos International School", "Evolution International School", "Falcon International School", "Future International Language School", "Futures British International School", "GEMS British International School Madinaty", "GEMS International School - Alexandria", "GateWay International School", "Genisis International School", "Gheriany International School", "Global Achievers International School", "Global Paradigm International School", "Green Heights International school", "Green Hills College", "Hayah International Academy", "Heritage International School", "Highlands International School", "Hotep International School", "Imperial College Egypt (ICE)", "Integrated Thebes Language School", "International Modern School Sayed Galal", "International Schools of Kenana", "Karnak International School", "Kaumeya Language Schools", "Kent College West Cairo", "Knowledge Valley International School", "Leaders International College", "Lycee Concordia International School", "Maadi British International School (MBIS)", "Madinaty Language School", "Majesty International School", "Malvern College Egypt", "Manaret El - Eman International School", "Manhattan Elite International School", "Manhattan International School", "Manor House International School", "Marvel International School", "Merryland International School", "Metropolitan International School", "Misr Language Schools (MLS)", "Modern American School", "Modern American School of Egypt (MASE)", "Modern English School Cairo (MES)", "Mokattam International Language School", "Moon Gardens International school", "Mount International School", "Narmer American College", "Narmer Language School", "Nefertari International School", "Nermien Ismail International School (NIS) - El Sherouk City", "Nermien Ismail International School (NIS) - Nasr City", "Nermien Ismail International School (NIS) - New Cairo", "Nermien Ismail International School (NIS) - New Capital", "Nermien Ismail International School (NIS) - Port Said", "New Cairo British International School (NCBIS)", "New Capital English School", "New Castle International School", "New El Quds International School", "New Generation Internatioanl School  - El Sadat", "New Generation International School", "New Sky Light National School", "New Vision Language School", "Nile Egyptian International School", "Nile Sons International School", "Noor International School", "Notre Dame Zeitoun", "Oasis International School", "Own Heliopolis Schools", "Oxford Modern School", "Pioneer Integrated School", "Pré Vert International Schools GPIS", "Rahn Schulen Kairo", "Ramses College (National and International)", "Remas Language School", "Renaissance International School", "Repton School Cairo", "Roots International School", "Royal Canadian International School", "Sacré-Cœur Ghamra", "Sacré-Cœur Heliopolis", "Sahara International School", "Sakkara Language School", "Salahaldin International School", "Seven Pillars International School", "Smart City International School Hurghada", "Smart International School", "Smart Vision International School", "Sphinx International School", "St Fatima International School", "St. Amal Michael College", "Stars International School", "Sun of Glory International School", "Sun of Knowledge British International School", "Sunrise International School", "The British International School Ismailia", "The British School Al Rehab (GEMS-TBS)", "The Egyptian Language School (ELS)", "The International Schools of Choueifat Egypt", "The Royal College International School", "Utopia International School", "Victory College", "Westview International Language School", "Winchester British International School", "Windrose Academy", "Wise International School"];
     const DATA_UNIVERSITIES = ["10th University", "6th October University", "6th of October High Institute", "A-Tawasul University", "AFRICA UNVERSITY", "AL MENIA UNIVERSITY", "AL Nahreen University", "AL-HOSN University", "ALDAR UNIVERSITY COLLEGE", "ALSON", "ARAB INTERNATINAL UNIVERSITY", "AUGUSTANA COLLEGE", "Abu Dhabi University", "Aden University", "Adfan University", "Aditya Bangalore Institute of Pharmacy Education & Research", "Ahmadubell University", "Ahram Canadian University", "Ain Shams University", "Ajman University", "Ajman University for Pharmacy", "Ajman University for science and technology", "Akbar El yom Academy", "Akhbar Elyoum Academy", "Al Ain", "Al Akhbar Al Yaoum", "Al Azhar Univserity", "Al Azhar on Gaza", "Al Balqaa Applied University", "Al Farabi", "Al Fateh University", "Al Hosn University", "Al Kalamon Private University", "Al Mansour", "Al Menoufia", "Al Mousel University", "Al Mustansareya", "Al Nahda University", "Al Quassim University", "Al Salam University", "Al Tahady Medical University", "Al Tawfiq", "Al Yamamah University", "Al-Safwa", "Al-Yarmouk Collegge", "AlFaisal University", "Alamein International University", "Alameya Institute for Systems", "Alexandria Higher Institute", "Alexandria University", "Algonquin University in Canada", "Almaarefa Colleges for Science & Technology", "Almadain College", "Almanhal Academy of Science", "Alofoug College of Science and Technology", "Alrayan Colleges", "Altai State Medical University", "American Intercontinental University", "American University  of Sharja", "American University in Birut", "American University in Cairo", "American University in Dubai", "American University in Emirates", "American University in Ras Elkhaimah", "American University of Kuwait", "American University of Malta", "American University of The Middle East", "Amman Ahlia University", "Applied Science University", "Applied Sciences", "Applied Social Sciences University", "Arab Academy for Science and Technology (Naval Aca", "Arab American University", "Arab International University Syria", "Arab Open University", "Arab Open University In Bahrain", "Arab Open University Kuwait", "Arab Open University SA", "Arostutaluo University", "Assiut University", "Aswan university -Aswan", "Australian College of Kuwait", "Badr University", "Baghdad University", "Bahcesehir University", "Bahrain University", "Banha University", "Bani Suef University", "Batterjee Medical College", "Bayan University", "Beghdad College School", "Belgorod State Technological  University", "Belgorod State Technological University", "Benha National University", "Beni Suef National University", "Binus University International", "British University of Egypt", "Budapest Metropolitan university", "Buraydah Colleges", "Buryidah College of Technology", "COLLEGE OF Bussiness Administration", "CU DENVER", "Cairo Higher Intitutes", "Cairo National University", "Cairo University", "Cairo University Fayoum Branch", "California State University", "Canadian Higher Institute for Business & Engineering Technology", "Canadian International College", "Canadian University in Dubai", "Canadian University of Dubai", "Carlton", "Carneige Mellon University", "Catholic University of America", "Charles University", "Chuvash State Medical University", "City Washington in USA", "City university New York", "College Of Technological Science", "College of Pharmacy", "College of Staten Island", "College of Technical Studies", "College of Technology Mekka", "College of Telecommunications &Electronics", "College of The North Atlantic", "Concordia University", "Cultural & Education American city", "Dalhousie University", "Damascus University", "Damelin College", "Damietta University", "Dar Al-Hekma", "Dar Al-Salam University For Science & Technology", "Delta Accademy for Computer Sciences", "Delta University for Science and Technology", "Delta Universty for Science and Technology", "Deraya University", "Derzhavin Tambov State University", "Dubai Pharmacy College", "EAST WEST UNIVERSITY", "ECOLE NATIONAL D'ARCHITECTURE", "EL Rabat University", "EL Sherouk University", "ENG(Aviation)", "ERASMUS UNIVERSITY ROTTERDAM", "ESLSCA University", "East Port Said National University", "East Tennessee State University", "Eastern Mediterranean", "Eastern Mediterranean University", "Ebla Private University", "Effat University", "Egypt - Jaban University", "Egypt- Japan University Of Sciences and Technology", "Egyptian Chinese University", "Egyptian E-Learning University", "Egyptian Russian University", "El Emam Mohamed Bin Said University", "El Nileen University", "El Razi College of medical health", "El Zaytouna Jordanian university", "El-Menya University", "European Global University", "European University", "Faisal International academy", "Fajr Collage", "Fayoum University", "Flinders University", "Floreda Institute of Technology", "Florida State College", "French University", "Future University in Egypt", "Galala University", "German International University", "German University in Cairo", "Girne American University", "Giza Engineering Institute", "Griffith University", "Gulf Medical University", "Gulf University For Science & Technology", "Heliopolis", "Helwan Alahleya University", "Helwan University", "High Institute of Languages- 6th of October", "Higher Institute for Computer studies and IT", "Higher Institute of Engineering & Tecnology", "Higher Technical Institute 10th of Ramadan", "Higher Technological Institute", "Hillsborough Community College", "Horus University in Egypt", "Hult International Business School", "IMI", "INDIANA UNIVERSITY", "Ibn Sina", "Ibn Sina University", "Indiana University of Pennsylvania", "Institut De Management D Alger", "Institute oF Civil and Architecture Engineering", "Institute of Aviation Engineering and Technology", "Institute of Computer and Information Technology and Aerospace", "Internaltion Islamic University Malaysia", "Internatiional University of Africa", "International Accademy For Media Science", "International Burch University", "International Islamic University Malaysia", "International University For Science & Technology", "Istanbul Gelisim University", "Istinye University Istanbul", "James Cook", "John Cabot University", "Jordan Univ. for Science and Tech", "Jubail Industrial College", "KARABUK UNIVERSITY", "KAZAN STATE POWER ENGINEERING UNIVERSITY", "Kabardino-Balkaria State University", "Kafr El-Sheikh University", "Kalmoon Univeristy", "Kar Younes University", "Karary University", "Kaser el einy Faculty of medicine", "Kazan National Research Technical University", "Kazan State Medical University", "Kent State University", "Khartoum College of medical Science", "Khartoum University", "King Abdul Aziz", "King Fahd Faysal", "King Fahd university (Petrol)", "King Khaled University", "King Salman International University", "King Saud University", "Kings Borough Community College", "Kuwait University", "Lebanese International University", "Lebaniase American University", "Leeds University", "Libyan International Medical University", "Los Angeles Pierce College", "Luxor", "Lyon university", "MAHSA University", "MAIAMI University", "MALTEPE University", "MGR Medical University", "MONASTR UNIVERSITIE", "MUSCAT UNIVERSITY", "Management & Science University", "Manitoba", "Mansoura University", "May University in Cairo", "Mazoon College", "McMaster", "Medical Colleges", "Medical University of Pirogov", "Menoufia University", "Miami Dade College", "Middel Sex", "Middle East Accademy", "Misr International University", "Misr University For Science &Technology", "Modern Academy", "Modern Sciences and Arts University", "Modern University For Technology And Information", "Modesto Junior rCollege", "Mohamed V University", "Monastir University", "Monofia National Uinversity", "Moskovskiy Politekhnicheskiy Universitet", "Multimedia", "Mutah University", "Nahda College", "Napta College", "National Medical University of M.I Pyrogova", "National Pirogov Memorial Medical University", "National Pirogov University", "National Research Lobachevsky State University of Nizhny Novgorod", "National University", "Near East University", "New Giza", "New Mansoura University", "New York City Technical College", "Nile University", "Northern Virginia Community College", "OKAN University", "October High Institute For Engineering& Technology", "Okland Community College", "Oman Dental College", "Orel State University", "Ostim Technical University", "Penza State University", "People's Friendship University of Russia (RUDN)", "Petra University", "Pharos", "Philadelphia", "Port Said University", "Prince Sultan", "Private College of Dentistry in Reyad", "Pyramids Higher Institute", "Qattar University", "Queen Arwa University", "RAK Medical and Health Sciences University", "Richmond University", "Riyadh College of Dentistry & Pharmacy", "Riyadh International College", "Russian Egyptian University", "Ryerson University", "ST. Peter'sburg Ploytechnic University", "Sadat Academy for Management Sciences", "Saint Petersburg Academy", "Salem International University", "Sana'a Community College", "Saudi Electronic University", "School of Health Care", "Scientific College of Design", "Sechenov University", "Sinai University", "Social And Applied Science", "Sohag University", "South URAL State University", "Sphinx University", "Sudan International University", "Suez Canal University", "Sunway College", "Taif University", "Talaa El Kamal", "Tambov State University", "Tanta", "Tarbeya Faneya", "The Hashemite University", "The Serian International Private University for Scince and Technology", "The University of Jordan", "Thebes Higher Institute for Computer and Management Sciences", "Thebes Higher Instiute of Engineering", "Tishreen University", "Tulsa Community College", "Tyumen State University", "UCLA", "UCSI University", "UMm El-Qurra", "Univeristy of Science & Technology", "University College Birmingham", "University Of MANITOBA", "University Of Malta", "University Of Medical Sciences &Technology", "University Of Palestine", "University Of Sciences &Technology SUDAN", "University Of Sharja", "University Technology Petronas", "University of Alex Damanhour branch", "University of Alhayat", "University of Allepo", "University of Applied Sciences Utrecht", "University of Arkansas At Little Rock", "University of Balamand", "University of Benghazy (Garyounis)", "University of Bradford", "University of Garden city", "University of Hertfordshire", "University of Jordan", "University of Malta", "University of Massachusetts Dartmouth", "University of Nizwa", "University of OTTAWA", "University of Parma", "University of Pince Mugrin", "University of Science and Technology", "University of Southern Queensland", "University of Study of Milano", "University of Sussex", "University of TILBURG", "University of Tasmania", "University of Technology", "University of Tronto", "University of Virginia", "University of Wollongong", "Vinnystsia National Technical University", "Virginia Commonwealth University", "Volgograd State Medical University", "Voronezh State University of Foresty and Technologies", "WESTMINSTER UNIVERSITY", "WICHITA STATE UNIVERSITY", "Wadi International university", "Watanya Private University", "Western Michigan University", "Windsor University", "YEMEN UNIVERSITY", "Yanbu Industrial College", "Yarmouk Private University", "York", "Zagazig University", "Zagazig University-Banha", "Zagazig University-Shoubra", "Zarkaa Private University", "waterloo University"];
@@ -5333,10 +5344,29 @@
       if (error) {
         throw new Error('Upload error: ' + error.message);
       }
-      const { data: urlData } = supabaseClient.storage
-        .from(bucketName)
-        .getPublicUrl(filePath);
-      return urlData.publicUrl;
+      // Store the storage path (not public URL) so bucket can be secured
+      return `storage:${bucketName}/${filePath}`;
+    }
+
+    // Generates a 1-hour temporary signed URL for a stored document path
+    async function generateSignedUrl(storedValue) {
+      if (!storedValue || !supabaseClient) return storedValue;
+      // Handle legacy public URLs (existing records before security update)
+      if (storedValue.startsWith('http')) return storedValue;
+      // Handle new path format: storage:bucketName/filePath
+      if (storedValue.startsWith('storage:')) {
+        const withoutPrefix = storedValue.slice('storage:'.length);
+        const slashIdx = withoutPrefix.indexOf('/');
+        if (slashIdx === -1) return null;
+        const bucket = withoutPrefix.slice(0, slashIdx);
+        const path = withoutPrefix.slice(slashIdx + 1);
+        const { data, error } = await supabaseClient.storage
+          .from(bucket)
+          .createSignedUrl(path, 3600); // 1 hour expiry
+        if (error || !data?.signedUrl) return null;
+        return data.signedUrl;
+      }
+      return storedValue;
     }
 
     async function triggerAutoEmail(payload) {
@@ -5689,7 +5719,7 @@
       const errEl = document.getElementById('err_admin_login');
       
       if (!supabaseClient) {
-        if (user === 'admin' && pass === 'Forall!@#$%^123456') {
+        if (user === 'admin' && pass === 'UEC@Adm1n#Fallback!2026') {
           isAdminAuthenticated = true;
           document.getElementById('admin-login-modal').classList.add('hidden');
           showAdmin();
@@ -6080,40 +6110,40 @@
 
       function renderField(label, id, value, editable = true, type = 'text') {
         if (!isEditing || !editable) {
-          return `<div class="details-item"><label>${label}</label><span>${value || '—'}</span></div>`;
+          return `<div class="details-item"><label>${escapeHtml(label)}</label><span>${value ? escapeHtml(value) : '—'}</span></div>`;
         }
         if (type === 'textarea') {
-          return `<div class="details-item" style="grid-column: span 2;"><label>${label}</label><textarea id="edit_${id}" style="width:100%; min-height:60px; padding:6px; border:1px solid var(--border); border-radius:4px; font-family:inherit;">${value || ''}</textarea></div>`;
+          return `<div class="details-item" style="grid-column: span 2;"><label>${escapeHtml(label)}</label><textarea id="edit_${id}" style="width:100%; min-height:60px; padding:6px; border:1px solid var(--border); border-radius:4px; font-family:inherit;">${escapeHtml(value || '')}</textarea></div>`;
         }
-        return `<div class="details-item"><label>${label}</label><input type="${type}" id="edit_${id}" value="${value || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>`;
+        return `<div class="details-item"><label>${escapeHtml(label)}</label><input type="${type}" id="edit_${id}" value="${escapeHtml(value || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>`;
       }
 
       let nameHTML = '';
       if (!isEditing) {
         nameHTML = `
-          <div class="details-item"><label>Full Name (English)</label><span>${r.first_name_en || ''} ${r.second_name_en || ''} ${r.third_name_en || ''} ${r.last_name_en || ''}</span></div>
-          <div class="details-item"><label>Full Name (Arabic)</label><span>${r.first_name_ar || ''} ${r.second_name_ar || ''} ${r.third_name_ar || ''} ${r.last_name_ar || ''}</span></div>
+          <div class="details-item"><label>Full Name (English)</label><span>${escapeHtml(r.first_name_en || '')} ${escapeHtml(r.second_name_en || '')} ${escapeHtml(r.third_name_en || '')} ${escapeHtml(r.last_name_en || '')}</span></div>
+          <div class="details-item"><label>Full Name (Arabic)</label><span>${escapeHtml(r.first_name_ar || '')} ${escapeHtml(r.second_name_ar || '')} ${escapeHtml(r.third_name_ar || '')} ${escapeHtml(r.last_name_ar || '')}</span></div>
         `;
       } else {
         nameHTML = `
           <div class="details-item" style="grid-column: span 2; display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px;">
-            <div><label>First Name (EN)</label><input type="text" id="edit_first_name_en" value="${r.first_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
-            <div><label>Second (EN)</label><input type="text" id="edit_second_name_en" value="${r.second_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
-            <div><label>Third (EN)</label><input type="text" id="edit_third_name_en" value="${r.third_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
-            <div><label>Last (EN)</label><input type="text" id="edit_last_name_en" value="${r.last_name_en || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>First Name (EN)</label><input type="text" id="edit_first_name_en" value="${escapeHtml(r.first_name_en || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Second (EN)</label><input type="text" id="edit_second_name_en" value="${escapeHtml(r.second_name_en || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Third (EN)</label><input type="text" id="edit_third_name_en" value="${escapeHtml(r.third_name_en || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Last (EN)</label><input type="text" id="edit_last_name_en" value="${escapeHtml(r.last_name_en || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
           </div>
           <div class="details-item" style="grid-column: span 2; display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px;">
-            <div><label>First Name (AR)</label><input type="text" id="edit_first_name_ar" value="${r.first_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
-            <div><label>Second (AR)</label><input type="text" id="edit_second_name_ar" value="${r.second_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
-            <div><label>Third (AR)</label><input type="text" id="edit_third_name_ar" value="${r.third_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
-            <div><label>Last (AR)</label><input type="text" id="edit_last_name_ar" value="${r.last_name_ar || ''}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>First Name (AR)</label><input type="text" id="edit_first_name_ar" value="${escapeHtml(r.first_name_ar || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Second (AR)</label><input type="text" id="edit_second_name_ar" value="${escapeHtml(r.second_name_ar || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Third (AR)</label><input type="text" id="edit_third_name_ar" value="${escapeHtml(r.third_name_ar || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
+            <div><label>Last (AR)</label><input type="text" id="edit_last_name_ar" value="${escapeHtml(r.last_name_ar || '')}" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px;"></div>
           </div>
         `;
       }
 
       let statusHTML = '';
       if (!isEditing) {
-        statusHTML = `<div class="details-item"><label>Status</label><span class="status-badge status-${r.status || 'pending'}">${r.status || 'pending'}</span></div>`;
+        statusHTML = `<div class="details-item"><label>Status</label><span class="status-badge status-${escapeHtml(r.status || 'pending')}">${escapeHtml(r.status || 'pending')}</span></div>`;
       } else {
         statusHTML = `
           <div class="details-item">
@@ -6212,23 +6242,24 @@
 
       if (r.applicant_type === 'transfer') {
         html += `
-          <div class="details-item"><label>Transfer University</label><span>${r.transfer_university || '—'}</span></div>
-          <div class="details-item"><label>Transfer Country</label><span>${r.transfer_country || '—'}</span></div>
-          <div class="details-item" style="grid-column: span 2;"><label>Current Faculty</label><span>${r.transfer_faculty_choice || '—'}</span></div>
+          <div class="details-item"><label>Transfer University</label><span>${escapeHtml(r.transfer_university || '—')}</span></div>
+          <div class="details-item"><label>Transfer Country</label><span>${escapeHtml(r.transfer_country || '—')}</span></div>
+          <div class="details-item" style="grid-column: span 2;"><label>Current Faculty</label><span>${escapeHtml(r.transfer_faculty_choice || '—')}</span></div>
         `;
       }
 
-      function getAttachmentLink(url, label) {
-        if (url) {
-          return `<a href="${url}" target="_blank" class="attachment-btn">📁 ${label}</a>`;
+      // Render placeholder attachment links first (will be replaced with signed URLs async)
+      function buildAttachmentPlaceholder(storedVal, label, domId) {
+        if (!storedVal) {
+          return `<span class="attachment-missing" id="${domId}">❌ No ${escapeHtml(label)} Uploaded</span>`;
         }
-        return `<span class="attachment-missing">❌ No ${label} Uploaded</span>`;
+        return `<a href="#" class="attachment-btn" id="${domId}" style="opacity:0.6;">⏳ Loading ${escapeHtml(label)}...</a>`;
       }
 
-      html += getAttachmentLink(r.file_id_url, 'National ID / Passport');
-      html += getAttachmentLink(r.file_cert_url, 'High School Certificate');
-      html += getAttachmentLink(r.file_photo_url, 'Personal Photo');
-      html += getAttachmentLink(r.file_extra_url, 'Additional Documents');
+      html += buildAttachmentPlaceholder(r.file_id_url,    'National ID / Passport',    'attach-id');
+      html += buildAttachmentPlaceholder(r.file_cert_url,  'High School Certificate',   'attach-cert');
+      html += buildAttachmentPlaceholder(r.file_photo_url, 'Personal Photo',            'attach-photo');
+      html += buildAttachmentPlaceholder(r.file_extra_url, 'Additional Documents',      'attach-extra');
 
       html += `
         </div>
@@ -6236,7 +6267,32 @@
 
       content.innerHTML = html;
       document.getElementById('admin-details-modal').classList.remove('hidden');
-    }
+
+      // Async: resolve signed URLs and update the links after modal is visible
+      (async () => {
+        const attachments = [
+          { stored: r.file_id_url,    label: 'National ID / Passport',  id: 'attach-id'    },
+          { stored: r.file_cert_url,  label: 'High School Certificate', id: 'attach-cert'  },
+          { stored: r.file_photo_url, label: 'Personal Photo',          id: 'attach-photo' },
+          { stored: r.file_extra_url, label: 'Additional Documents',    id: 'attach-extra' },
+        ];
+        for (const att of attachments) {
+          const el = document.getElementById(att.id);
+          if (!el || !att.stored) continue;
+          try {
+            const signedUrl = await generateSignedUrl(att.stored);
+            if (signedUrl) {
+              el.outerHTML = `<a href="${signedUrl}" target="_blank" class="attachment-btn" id="${att.id}">📁 ${escapeHtml(att.label)}</a>`;
+            } else {
+              el.outerHTML = `<span class="attachment-missing" id="${att.id}">❌ ${escapeHtml(att.label)} (Access Error)</span>`;
+            }
+          } catch(e) {
+            el.outerHTML = `<span class="attachment-missing" id="${att.id}">❌ ${escapeHtml(att.label)} (Error)</span>`;
+          }
+        }
+      })();
+
+    } // end showApplicationDetails
 
     // ===== ADMIN DELETE APPLICATION FUNCTIONS =====
     let pendingDeleteId = null;
@@ -6480,21 +6536,21 @@
         return;
       }
       tbody.innerHTML = rows.map(a => `
-    <tr style="cursor:pointer" onclick="showApplicationDetails('${a.id}')">
-      <td><code style="font-size:11px;color:var(--navy);font-family:monospace">${a.displayId}</code></td>
-      <td>${a.name || '—'}</td>
-      <td style="text-transform:capitalize">${a.intake || '—'}</td>
-      <td>${(a.faculty || '—').replace('Faculty of ', '')}</td>
-      <td>${a.score || '—'}${a.score ? '%' : ''}</td>
-      <td style="text-transform:capitalize">${(a.edu || '—').replace('thanaweya', 'Thanaweya')}</td>
+    <tr style="cursor:pointer" onclick="showApplicationDetails('${escapeHtml(a.id)}')">
+      <td><code style="font-size:11px;color:var(--navy);font-family:monospace">${escapeHtml(a.displayId)}</code></td>
+      <td>${escapeHtml(a.name || '—')}</td>
+      <td style="text-transform:capitalize">${escapeHtml(a.intake || '—')}</td>
+      <td>${escapeHtml((a.faculty || '—').replace('Faculty of ', ''))}</td>
+      <td>${escapeHtml(String(a.score || '—'))}${a.score ? '%' : ''}</td>
+      <td style="text-transform:capitalize">${escapeHtml((a.edu || '—').replace('thanaweya', 'Thanaweya'))}</td>
       <td>
-        <span class="status-badge status-${a.status}" style="cursor:pointer" onclick="event.stopPropagation(); toggleAppStatus('${a.id}', '${a.status}')" title="Click to toggle status">
-          ${a.status}
+        <span class="status-badge status-${escapeHtml(a.status)}" style="cursor:pointer" onclick="event.stopPropagation(); toggleAppStatus('${escapeHtml(a.id)}', '${escapeHtml(a.status)}')" title="Click to toggle status">
+          ${escapeHtml(a.status)}
         </span>
       </td>
-      <td>${a.date || '—'}</td>
+      <td>${escapeHtml(a.date || '—')}</td>
       <td onclick="event.stopPropagation()">
-        <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px; color:var(--error); border-color:rgba(192, 57, 43, 0.4);" onclick="confirmDeleteApplication('${a.id}', event)" title="Delete application">Delete 🗑️</button>
+        <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px; color:var(--error); border-color:rgba(192, 57, 43, 0.4);" onclick="confirmDeleteApplication('${escapeHtml(a.id)}', event)" title="Delete application">Delete 🗑️</button>
       </td>
     </tr>`).join('');
     }
