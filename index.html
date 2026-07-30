@@ -4731,16 +4731,26 @@
 
     function showDuplicateModal(existing) {
       const info = document.getElementById('duplicate-info');
-      const submittedDate = existing.created_at ? new Date(existing.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
-      const fullName = [existing.first_name_en, existing.second_name_en, existing.third_name_en, existing.last_name_en].filter(Boolean).join(' ');
-      const displayId = existing.id && existing.id.startsWith('UNASSIGNED') ? '' : (existing.id || '');
-      info.innerHTML = `
-        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128194; Application ID:</strong> <span style="color:#c0392b;font-weight:700;">${displayId || '—'}</span></div>
-        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128100; Name:</strong> ${fullName || '—'}</div>
-        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128222; Mobile:</strong> ${existing.mobile || '—'}</div>
-        <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128231; Email:</strong> ${existing.email || '—'}</div>
-        <div><strong style="color:var(--navy);">&#128197; Submitted:</strong> ${submittedDate}</div>
-      `;
+      if (existing && typeof existing === 'object' && existing.created_at) {
+        const submittedDate = existing.created_at ? new Date(existing.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
+        const fullName = [existing.first_name_en, existing.second_name_en, existing.third_name_en, existing.last_name_en].filter(Boolean).join(' ');
+        const displayId = existing.id && existing.id.startsWith('UNASSIGNED') ? '' : (existing.id || '');
+        info.innerHTML = `
+          <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128194; Application ID:</strong> <span style="color:#c0392b;font-weight:700;">${escapeHtml(displayId || '—')}</span></div>
+          <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128100; Name:</strong> ${escapeHtml(fullName || '—')}</div>
+          <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128222; Mobile:</strong> ${escapeHtml(existing.mobile || '—')}</div>
+          <div style="margin-bottom:6px;"><strong style="color:var(--navy);">&#128231; Email:</strong> ${escapeHtml(existing.email || '—')}</div>
+          <div><strong style="color:var(--navy);">&#128197; Submitted:</strong> ${escapeHtml(submittedDate)}</div>
+        `;
+      } else {
+        info.innerHTML = `
+          <div style="padding:12px; background:rgba(192,57,43,0.08); border-radius:6px; color:var(--navy); line-height:1.6;">
+            <strong>An application matching this Mobile Number, National ID, or Passport already exists in our system.</strong>
+            <br><br>
+            If you have already submitted an application, please contact the UEC Admissions Office to update your details or check your admission status.
+          </div>
+        `;
+      }
       document.getElementById('duplicate-modal').classList.remove('hidden');
     }
 
@@ -4752,32 +4762,20 @@
         const passportNo = (document.getElementById('passport_no')?.value || '').trim();
         if (!mobile && !nationalId && !passportNo) return false;
 
-        let query = supabaseClient
-          .from('applications')
-          .select('id, first_name_en, second_name_en, third_name_en, last_name_en, mobile, email, national_id, created_at')
-          .limit(5);
+        // Secure RPC call to check_duplicate_applicant (bypasses direct SELECT table access)
+        const { data: isDuplicate, error } = await supabaseClient.rpc('check_duplicate_applicant', {
+          p_mobile: mobile || '',
+          p_national_id: nationalId || passportNo || ''
+        });
 
-        // Build OR filter for phone / national ID / passport
-        const orParts = [];
-        if (mobile) orParts.push(`mobile.eq.${mobile}`);
-        if (nationalId && nationalId.length >= 10) orParts.push(`national_id.eq.${nationalId}`);
-        if (passportNo) orParts.push(`passport_no.eq.${passportNo}`);
-        if (orParts.length === 0) return false;
+        if (error) {
+          console.warn('Duplicate check RPC error:', error);
+          return false;
+        }
 
-        query = query.or(orParts.join(','));
-        const { data, error } = await query;
-        if (error) { console.warn('Duplicate check error:', error); return false; }
-
-        if (data && data.length > 0) {
-          // Ignore entries that are UNASSIGNED test records with "test" name
-          const real = data.filter(r => {
-            const name = `${r.first_name_en || ''} ${r.last_name_en || ''}`.toLowerCase();
-            return !name.includes('test') && !name.includes('tsetse') && !(r.id || '').startsWith('UNASSIGNED-');
-          });
-          if (real.length > 0) {
-            showDuplicateModal(real[0]);
-            return true;
-          }
+        if (isDuplicate) {
+          showDuplicateModal(true);
+          return true;
         }
         return false;
       } catch (e) {
@@ -5575,10 +5573,17 @@
           console.warn('Supabase unavailable — submission saved locally only.');
         }
 
+        function generateSecurePassword(length = 14) {
+          const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+          const randomValues = new Uint32Array(length);
+          window.crypto.getRandomValues(randomValues);
+          return Array.from(randomValues, val => charset[val % charset.length]).join('');
+        }
+
         const namePart = (data.name_en_first || 'stud').toLowerCase().slice(0, 5);
         const randNum = Math.floor(1000 + Math.random() * 9000);
         const generatedUsername = namePart + randNum;
-        const generatedPassword = 'Uec' + Math.floor(100000 + Math.random() * 900000) + '!';
+        const generatedPassword = generateSecurePassword(14);
 
         // Add generated credentials to payload for email dispatch
         payload.portal_username = generatedUsername;
