@@ -1078,6 +1078,54 @@
       display: inline-block;
     }
 
+    /* ===== BULK ACTIONS BAR CSS ===== */
+    .bulk-actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, rgba(10, 34, 64, 0.05) 0%, rgba(200, 155, 60, 0.12) 100%);
+      border: 1.5px solid var(--gold);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(10, 34, 64, 0.08);
+    }
+    .bulk-actions-bar.hidden {
+      display: none !important;
+    }
+    .bulk-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bulk-count-badge {
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 2px 9px;
+      border-radius: 12px;
+    }
+    .bulk-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .bulk-select {
+      padding: 6px 10px;
+      border: 1px solid var(--gold);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--navy);
+      background: #fff;
+      cursor: pointer;
+      outline: none;
+    }
+
     .status-pending {
       background: #FFF3E0;
       color: #E65100;
@@ -2300,10 +2348,40 @@
         <input type="text" id="filter-search" placeholder="Search by name or ID..." oninput="renderTable()" style="min-width:180px">
       </div>
 
+      <!-- ===== BULK ACTIONS BANNER ===== -->
+      <div id="bulk-actions-bar" class="bulk-actions-bar hidden">
+        <div class="bulk-info">
+          <span class="bulk-count-badge" id="bulk-selected-count">0</span>
+          <strong style="color:var(--navy); font-size:13px;">Applications Selected</strong>
+        </div>
+        <div class="bulk-buttons">
+          <select id="bulk-status-select" onchange="executeBulkStatusChange(this.value)" class="bulk-select">
+            <option value="" disabled selected>-- Change Status --</option>
+            <option value="pending">Set Status: Pending</option>
+            <option value="under review">Set Status: Under Review</option>
+            <option value="approved">Set Status: Approved</option>
+            <option value="rejected">Set Status: Rejected</option>
+          </select>
+          <button class="btn btn-secondary" onclick="executeBulkEmail()" style="padding:6px 12px; font-size:12px;" title="Send email to selected applicants">
+            📧 Email Selected
+          </button>
+          <button class="btn btn-secondary" onclick="executeBulkExport()" style="padding:6px 12px; font-size:12px;" title="Export selected applications to CSV">
+            📊 Export CSV
+          </button>
+          <button class="btn btn-ghost" onclick="confirmBulkDelete()" style="padding:6px 12px; font-size:12px; color:var(--error); border-color:rgba(192, 57, 43, 0.4);" title="Delete selected applications">
+            🗑️ Delete Selected
+          </button>
+          <button class="btn btn-ghost" onclick="clearSelection()" style="padding:6px 10px; font-size:12px; color:var(--text-light);" title="Clear selection">
+            ✖ Clear
+          </button>
+        </div>
+      </div>
+
       <div class="admin-table">
         <table>
           <thead>
             <tr id="admin-thead-tr">
+              <th style="width:36px; text-align:center;"><input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" title="Select / Deselect All Visible"></th>
               <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('id')" title="Sort by App ID">App ID <span style="opacity:0.35; font-size:10px;">⇅</span></th>
               <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('name')" title="Sort Alphabetically by Name">Name <span style="opacity:0.35; font-size:10px;">⇅</span></th>
               <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('intake')" title="Sort by Intake">Intake <span style="opacity:0.35; font-size:10px;">⇅</span></th>
@@ -2317,7 +2395,7 @@
           </thead>
           <tbody id="admin-tbody">
             <tr>
-              <td colspan="9" style="text-align:center;color:var(--text-light);padding:24px">No applications yet. Submit the form to see data here.</td>
+              <td colspan="10" style="text-align:center;color:var(--text-light);padding:24px">No applications yet. Submit the form to see data here.</td>
             </tr>
           </tbody>
         </table>
@@ -6489,6 +6567,7 @@
       const thContainer = document.getElementById('admin-thead-tr');
       if (thContainer) {
         thContainer.innerHTML = `
+          <th style="width:36px; text-align:center;"><input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" title="Select / Deselect All Visible"></th>
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('id')" title="Sort by App ID">App ID${getSortIndicator('id')}</th>
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('name')" title="Sort Alphabetically by Name">Name${getSortIndicator('name')}</th>
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('intake')" title="Sort by Intake">Intake${getSortIndicator('intake')}</th>
@@ -6537,11 +6616,17 @@
 
       let tbody = document.getElementById('admin-tbody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:24px">No applications match the filter criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-light);padding:24px">No applications match the filter criteria.</td></tr>';
+        updateBulkBarUI();
         return;
       }
-      tbody.innerHTML = rows.map(a => `
+      tbody.innerHTML = rows.map(a => {
+        const isChecked = selectedAppIds.has(a.id) ? 'checked' : '';
+        return `
     <tr style="cursor:pointer" onclick="showApplicationDetails('${escapeHtml(a.id)}')">
+      <td style="text-align:center" onclick="event.stopPropagation()">
+        <input type="checkbox" class="app-row-checkbox" value="${escapeHtml(a.id)}" ${isChecked} onchange="toggleSelectApp('${escapeHtml(a.id)}', this, event)">
+      </td>
       <td><code style="font-size:11px;color:var(--navy);font-family:monospace">${escapeHtml(a.displayId)}</code></td>
       <td>${escapeHtml(a.name || '—')}</td>
       <td style="text-transform:capitalize">${escapeHtml(a.intake || '—')}</td>
@@ -6557,7 +6642,185 @@
       <td onclick="event.stopPropagation()">
         <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px; color:var(--error); border-color:rgba(192, 57, 43, 0.4);" onclick="confirmDeleteApplication('${escapeHtml(a.id)}', event)" title="Delete application">Delete 🗑️</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+      }).join('');
+
+      updateBulkBarUI();
+    }
+
+    // ===== BULK ACTIONS & SELECTION STATE =====
+    let selectedAppIds = new Set();
+
+    function toggleSelectApp(id, checkboxEl, event) {
+      if (event) event.stopPropagation();
+      if (checkboxEl.checked) {
+        selectedAppIds.add(id);
+      } else {
+        selectedAppIds.delete(id);
+      }
+      updateBulkBarUI();
+    }
+
+    function toggleSelectAll(selectAllEl) {
+      const rows = getCurrentlyFilteredRows();
+      if (selectAllEl.checked) {
+        rows.forEach(a => selectedAppIds.add(a.id));
+      } else {
+        rows.forEach(a => selectedAppIds.delete(a.id));
+      }
+      renderTable();
+      updateBulkBarUI();
+    }
+
+    function clearSelection() {
+      selectedAppIds.clear();
+      const selectAllEl = document.getElementById('select-all-checkbox');
+      if (selectAllEl) selectAllEl.checked = false;
+      renderTable();
+      updateBulkBarUI();
+    }
+
+    function updateBulkBarUI() {
+      const bar = document.getElementById('bulk-actions-bar');
+      const countEl = document.getElementById('bulk-selected-count');
+      const selectAllEl = document.getElementById('select-all-checkbox');
+      const count = selectedAppIds.size;
+
+      if (countEl) countEl.textContent = count;
+
+      if (bar) {
+        if (count > 0) {
+          bar.classList.remove('hidden');
+        } else {
+          bar.classList.add('hidden');
+        }
+      }
+
+      // Update Select All checkbox state based on currently visible rows
+      if (selectAllEl) {
+        const visibleRows = getCurrentlyFilteredRows();
+        if (visibleRows.length > 0 && visibleRows.every(a => selectedAppIds.has(a.id))) {
+          selectAllEl.checked = true;
+          selectAllEl.indeterminate = false;
+        } else if (visibleRows.some(a => selectedAppIds.has(a.id))) {
+          selectAllEl.checked = false;
+          selectAllEl.indeterminate = true;
+        } else {
+          selectAllEl.checked = false;
+          selectAllEl.indeterminate = false;
+        }
+      }
+
+      // Reset bulk status dropdown
+      const statusSelect = document.getElementById('bulk-status-select');
+      if (statusSelect) statusSelect.value = '';
+    }
+
+    function getCurrentlyFilteredRows() {
+      let fi = document.getElementById('filter-intake')?.value;
+      let ff = document.getElementById('filter-faculty')?.value;
+      let fs = document.getElementById('filter-status')?.value;
+      let fq = document.getElementById('filter-search')?.value.toLowerCase();
+      return applications.filter(a => {
+        if (fi && a.intake !== fi) return false;
+        if (ff && a.faculty !== ff) return false;
+        if (fs && a.status !== fs) return false;
+        if (fq && !a.name.toLowerCase().includes(fq) && !a.id.toLowerCase().includes(fq)) return false;
+        return true;
+      });
+    }
+
+    async function executeBulkStatusChange(newStatus) {
+      if (!newStatus || selectedAppIds.size === 0) return;
+      const count = selectedAppIds.size;
+      if (!confirm(`Are you sure you want to update the status of ${count} selected application(s) to "${newStatus}"?`)) {
+        document.getElementById('bulk-status-select').value = '';
+        return;
+      }
+
+      const ids = Array.from(selectedAppIds);
+      try {
+        if (supabaseClient) {
+          const { error } = await supabaseClient
+            .from('applications')
+            .update({ status: newStatus })
+            .in('id', ids);
+
+          if (error) throw error;
+        }
+
+        // Update in memory
+        applications.forEach(a => {
+          if (selectedAppIds.has(a.id)) {
+            a.status = newStatus;
+            if (a.raw) a.raw.status = newStatus;
+          }
+        });
+
+        alert(`✓ Successfully updated status for ${count} application(s) to "${newStatus}".`);
+        updateStats();
+        renderTable();
+        updateBulkBarUI();
+      } catch (err) {
+        alert('Failed to update status for selected applications: ' + err.message);
+      }
+    }
+
+    function executeBulkEmail() {
+      if (selectedAppIds.size === 0) return;
+      const selectedApps = applications.filter(a => selectedAppIds.has(a.id));
+      const validEmails = selectedApps.map(a => a.raw?.email).filter(Boolean);
+      if (validEmails.length === 0) {
+        alert('None of the selected applications have valid email addresses on record.');
+        return;
+      }
+
+      const bulkRecord = {
+        email: validEmails.join(', '),
+        first_name_en: `${selectedApps.length} Selected`,
+        last_name_en: `Applicants`,
+        id: `Bulk (${selectedApps.length})`
+      };
+
+      openEmailComposer(bulkRecord);
+    }
+
+    function executeBulkExport() {
+      if (selectedAppIds.size === 0) return;
+      const selectedApps = applications.filter(a => selectedAppIds.has(a.id));
+      exportCSV(selectedApps);
+    }
+
+    async function confirmBulkDelete() {
+      if (selectedAppIds.size === 0) return;
+      const count = selectedAppIds.size;
+      const confirmText = prompt(`⚠️ WARNING: You are about to PERMANENTLY DELETE ${count} selected application(s).\n\nTo confirm, type DELETE below:`);
+      if (confirmText !== 'DELETE') {
+        if (confirmText !== null) alert('Action cancelled — confirmation text did not match "DELETE".');
+        return;
+      }
+
+      const ids = Array.from(selectedAppIds);
+      try {
+        if (supabaseClient) {
+          const { error } = await supabaseClient
+            .from('applications')
+            .delete()
+            .in('id', ids);
+
+          if (error) throw error;
+        }
+
+        applications = applications.filter(a => !selectedAppIds.has(a.id));
+        selectedAppIds.clear();
+
+        alert(`✓ Successfully deleted ${count} application(s).`);
+        updateStats();
+        renderTable();
+        updateBulkBarUI();
+      } catch (err) {
+        alert('Failed to delete selected applications: ' + err.message);
+      }
     }
 
     async function toggleAppStatus(id, currentStatus) {
@@ -6595,8 +6858,9 @@
       document.getElementById('funnel-bars').innerHTML = html;
     }
 
-    function exportCSV() {
-      if (!applications.length) { alert('No applications to export.'); return; }
+    function exportCSV(targetApps = null) {
+      const listToExport = targetApps || applications;
+      if (!listToExport.length) { alert('No applications to export.'); return; }
       let headers = [
         'Application ID', 'Status', 'Date',
         'Applicant Type', 'Intake',
@@ -6615,7 +6879,7 @@
         'ID File URL', 'Photo File URL', 'Certificate File URL', 'Additional File URL'
       ];
       
-      let rows = applications.map(a => {
+      let rows = listToExport.map(a => {
         const r = a.raw || {};
         return [
           getDisplayAppId(r),
