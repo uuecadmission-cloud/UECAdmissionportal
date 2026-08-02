@@ -6332,7 +6332,7 @@
           const { error } = await supabaseClient
             .from('applications')
             .delete()
-            .or(`id.eq.${id},application_id.eq.${id}`);
+            .eq('id', id);
 
           if (error) throw error;
         }
