@@ -6022,40 +6022,62 @@
     function openEmailComposer(r, selectedList = null) {
       _emailComposerRecord = r;
       _emailComposerSelectedList = selectedList;
+      const recipientEl = document.getElementById('email_recipient');
+      const subjectEl = document.getElementById('email_subject');
+      const bodyEl = document.getElementById('email_body');
+      const presetEl = document.getElementById('email_template_preset');
+      const statusEl = document.getElementById('email-send-status');
+      const sendBtn = document.getElementById('btn-submit-custom-email');
+
       if (selectedList && selectedList.length > 0) {
         const count = selectedList.length;
-        const recipientSummary = selectedList.map(a => a.email).filter(Boolean).slice(0, 3).join(', ') + (selectedList.length > 3 ? ` ... (+${selectedList.length - 3} more)` : '');
-        document.getElementById('email-composer-recipient').textContent = `Bulk Batch (${count} Recipients): ${recipientSummary}`;
-      } else {
+        const summary = selectedList.map(a => a.email).filter(Boolean).slice(0, 2).join(', ') + (selectedList.length > 2 ? ` ... (+${selectedList.length - 2} more)` : '');
+        if (recipientEl) recipientEl.value = `Bulk Batch (${count} Recipients): ${summary}`;
+      } else if (r) {
         const name = [r.first_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Student';
-        document.getElementById('email-composer-recipient').textContent = `${name} — ${r.email || 'No email on record'}`;
+        if (recipientEl) recipientEl.value = `${name} <${r.email || 'No email'}>`;
       }
-      document.getElementById('email-composer-subject').value = '';
-      document.getElementById('email-composer-body').value = '';
-      document.getElementById('email-template-select').value = '';
-      const status = document.getElementById('email-composer-status');
-      status.style.display = 'none';
-      const sendBtn = document.getElementById('email-composer-send-btn');
-      sendBtn.disabled = false;
-      sendBtn.textContent = 'Send Email ✉️';
-      sendBtn.style.background = '';
-      document.getElementById('email-composer-modal').classList.remove('hidden');
+
+      if (subjectEl) subjectEl.value = '';
+      if (bodyEl) bodyEl.value = '';
+      if (presetEl) presetEl.value = 'custom';
+      if (statusEl) {
+        statusEl.style.display = 'none';
+        statusEl.textContent = '';
+      }
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Email Now 🚀';
+        sendBtn.style.backgroundColor = '#2b6cb0';
+      }
+
+      const modal = document.getElementById('admin-email-modal');
+      if (modal) modal.classList.remove('hidden');
     }
 
-    function applyEmailTemplate(type) {
+    function closeAdminEmailModal() {
+      const modal = document.getElementById('admin-email-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function onEmailTemplateChange(type) {
       const r = _emailComposerRecord || {};
       const name = [r.first_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Applicant';
       const appId = r.id || '—';
-      const subjectEl = document.getElementById('email-composer-subject');
-      const bodyEl = document.getElementById('email-composer-body');
-      if (!type) return;
+      const subjectEl = document.getElementById('email_subject');
+      const bodyEl = document.getElementById('email_body');
+      if (!type || type === 'custom') {
+        if (subjectEl) subjectEl.value = '';
+        if (bodyEl) bodyEl.value = '';
+        return;
+      }
 
       const templates = {
         missing_docs: {
           subject: `Action Required: Missing Documents – Application ${appId}`,
           body: `Dear ${name},\n\nThank you for submitting your application to the University of East Capital (UEC).\n\nAfter reviewing your application (ID: ${appId}), we found that some required documents are missing or incomplete. Please submit the following as soon as possible:\n\n- [ ] National ID / Passport copy\n- [ ] High school certificate (original + certified copy)\n- [ ] High school transcript\n- [ ] Personal photo (white background)\n\nPlease send the documents to enrol@uec.edu.eg or visit the Admissions Office (Building 1, Room 204).\n\nIf you have any questions, please call us at 17523.\n\nBest regards,\nUEC Admissions Team`
         },
-        interview: {
+        interview_invite: {
           subject: `Interview Invitation – Application ${appId}`,
           body: `Dear ${name},\n\nWe are pleased to inform you that your application (ID: ${appId}) has been reviewed and you are invited to attend an interview.\n\nInterview Details:\n- Date: [Please insert date]\n- Time: [Please insert time]\n- Location: UEC Campus, Admissions Building, Room 101\n\nPlease bring your original documents and a copy of this email.\n\nTo confirm your attendance, please reply to this email or call 17523.\n\nWe look forward to meeting you!\n\nBest regards,\nUEC Admissions Team`
         },
@@ -6071,31 +6093,41 @@
 
       const t = templates[type];
       if (t) {
-        subjectEl.value = t.subject;
-        bodyEl.value = t.body;
+        if (subjectEl) subjectEl.value = t.subject;
+        if (bodyEl) bodyEl.value = t.body;
       }
     }
 
-    async function sendCustomEmail() {
-      const subject = document.getElementById('email-composer-subject').value.trim();
-      const body = document.getElementById('email-composer-body').value.trim();
-      if (!subject) { alert('Please enter an email subject.'); return; }
-      if (!body) { alert('Please write the message body.'); return; }
+    async function sendCustomStudentEmail() {
+      const subjectEl = document.getElementById('email_subject');
+      const bodyEl = document.getElementById('email_body');
+      const subject = subjectEl ? subjectEl.value.trim() : '';
+      const body = bodyEl ? bodyEl.value.trim() : '';
 
-      const sendBtn = document.getElementById('email-composer-send-btn');
-      const statusEl = document.getElementById('email-composer-status');
-      sendBtn.disabled = true;
-      sendBtn.textContent = 'Sending...';
-      statusEl.style.display = 'none';
+      if (!subject) { alert('Please enter an email subject line.'); return; }
+      if (!body) { alert('Please write the email body content.'); return; }
+
+      const sendBtn = document.getElementById('btn-submit-custom-email');
+      const statusEl = document.getElementById('email-send-status');
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending Email...';
+      }
+      if (statusEl) {
+        statusEl.style.display = 'none';
+        statusEl.textContent = '';
+      }
 
       const list = (_emailComposerSelectedList && _emailComposerSelectedList.length > 0) 
         ? _emailComposerSelectedList 
         : (_emailComposerRecord ? [_emailComposerRecord] : []);
 
       if (list.length === 0 || !list[0].email) {
-        alert('No student email found.');
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Send Email ✉️';
+        alert('No recipient email found.');
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send Email Now 🚀';
+        }
         return;
       }
 
@@ -6105,7 +6137,7 @@
       for (let i = 0; i < list.length; i++) {
         const rec = list[i];
         if (!rec.email || !rec.email.includes('@')) continue;
-        sendBtn.textContent = `Sending (${i + 1}/${list.length})...`;
+        if (sendBtn) sendBtn.textContent = `Sending (${i + 1}/${list.length})...`;
 
         try {
           const res = await fetch(`${SUPABASE_URL}/functions/v1/send-admission-email`, {
@@ -6134,19 +6166,32 @@
       }
 
       if (successCount > 0) {
-        statusEl.style.display = 'block';
-        statusEl.style.background = '#d4edda';
-        statusEl.style.color = '#155724';
-        statusEl.textContent = `✓ Successfully sent ${successCount} email(s)${failCount > 0 ? ` (${failCount} failed)` : ''}!`;
-        sendBtn.textContent = '✓ Sent!';
-        sendBtn.style.background = 'var(--success)';
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#155724';
+          statusEl.style.backgroundColor = '#d4edda';
+          statusEl.style.padding = '8px 12px';
+          statusEl.style.borderRadius = '6px';
+          statusEl.textContent = `✓ Successfully sent ${successCount} email(s)${failCount > 0 ? ` (${failCount} failed)` : ''}!`;
+        }
+        if (sendBtn) {
+          sendBtn.textContent = '✓ Sent!';
+          sendBtn.style.backgroundColor = 'var(--success)';
+        }
+        setTimeout(() => closeAdminEmailModal(), 1800);
       } else {
-        statusEl.style.display = 'block';
-        statusEl.style.background = '#f8d7da';
-        statusEl.style.color = '#721c24';
-        statusEl.textContent = '✕ Failed to send emails. Please try again.';
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Retry ✉️';
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#721c24';
+          statusEl.style.backgroundColor = '#f8d7da';
+          statusEl.style.padding = '8px 12px';
+          statusEl.style.borderRadius = '6px';
+          statusEl.textContent = '✕ Failed to send email(s). Please try again.';
+        }
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Retry ✉️';
+        }
       }
     }
 
