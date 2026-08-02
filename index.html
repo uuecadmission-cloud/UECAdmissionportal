@@ -6017,11 +6017,19 @@
     // ===== EMAIL COMPOSER FUNCTIONS =====
 
     let _emailComposerRecord = null;
+    let _emailComposerSelectedList = null;
 
-    function openEmailComposer(r) {
+    function openEmailComposer(r, selectedList = null) {
       _emailComposerRecord = r;
-      const name = [r.first_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Student';
-      document.getElementById('email-composer-recipient').textContent = `${name} — ${r.email || 'No email on record'}`;
+      _emailComposerSelectedList = selectedList;
+      if (selectedList && selectedList.length > 0) {
+        const count = selectedList.length;
+        const recipientSummary = selectedList.map(a => a.email).filter(Boolean).slice(0, 3).join(', ') + (selectedList.length > 3 ? ` ... (+${selectedList.length - 3} more)` : '');
+        document.getElementById('email-composer-recipient').textContent = `Bulk Batch (${count} Recipients): ${recipientSummary}`;
+      } else {
+        const name = [r.first_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Student';
+        document.getElementById('email-composer-recipient').textContent = `${name} — ${r.email || 'No email on record'}`;
+      }
       document.getElementById('email-composer-subject').value = '';
       document.getElementById('email-composer-body').value = '';
       document.getElementById('email-template-select').value = '';
@@ -6030,6 +6038,7 @@
       const sendBtn = document.getElementById('email-composer-send-btn');
       sendBtn.disabled = false;
       sendBtn.textContent = 'Send Email ✉️';
+      sendBtn.style.background = '';
       document.getElementById('email-composer-modal').classList.remove('hidden');
     }
 
@@ -6068,11 +6077,6 @@
     }
 
     async function sendCustomEmail() {
-      const r = _emailComposerRecord;
-      if (!r || !r.email) {
-        alert('No student email found for this application.');
-        return;
-      }
       const subject = document.getElementById('email-composer-subject').value.trim();
       const body = document.getElementById('email-composer-body').value.trim();
       if (!subject) { alert('Please enter an email subject.'); return; }
@@ -6084,36 +6088,63 @@
       sendBtn.textContent = 'Sending...';
       statusEl.style.display = 'none';
 
-      try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-admission-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-          body: JSON.stringify({
-            email: r.email,
-            first_name_en: r.first_name_en || '',
-            last_name_en: r.last_name_en || '',
-            id: r.id || '',
-            custom_subject: subject,
-            custom_body: body,
-            sync_only: false
-          })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          statusEl.style.display = 'block';
-          statusEl.style.background = '#d4edda';
-          statusEl.style.color = '#155724';
-          statusEl.textContent = `✓ Email sent successfully to ${r.email}`;
-          sendBtn.textContent = '✓ Sent!';
-          sendBtn.style.background = 'var(--success)';
-        } else {
-          throw new Error(data.error || 'Unknown error');
+      const list = (_emailComposerSelectedList && _emailComposerSelectedList.length > 0) 
+        ? _emailComposerSelectedList 
+        : (_emailComposerRecord ? [_emailComposerRecord] : []);
+
+      if (list.length === 0 || !list[0].email) {
+        alert('No student email found.');
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Email ✉️';
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < list.length; i++) {
+        const rec = list[i];
+        if (!rec.email || !rec.email.includes('@')) continue;
+        sendBtn.textContent = `Sending (${i + 1}/${list.length})...`;
+
+        try {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/send-admission-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+            body: JSON.stringify({
+              email: rec.email,
+              first_name_en: rec.first_name_en || '',
+              last_name_en: rec.last_name_en || '',
+              id: rec.id || '',
+              custom_subject: subject,
+              custom_body: body,
+              sync_only: false
+            })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          console.error(`Failed to send email to ${rec.email}:`, err);
+          failCount++;
         }
-      } catch (err) {
+      }
+
+      if (successCount > 0) {
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#d4edda';
+        statusEl.style.color = '#155724';
+        statusEl.textContent = `✓ Successfully sent ${successCount} email(s)${failCount > 0 ? ` (${failCount} failed)` : ''}!`;
+        sendBtn.textContent = '✓ Sent!';
+        sendBtn.style.background = 'var(--success)';
+      } else {
         statusEl.style.display = 'block';
         statusEl.style.background = '#f8d7da';
         statusEl.style.color = '#721c24';
-        statusEl.textContent = '✕ Failed to send: ' + err.message;
+        statusEl.textContent = '✕ Failed to send emails. Please try again.';
         sendBtn.disabled = false;
         sendBtn.textContent = 'Retry ✉️';
       }
@@ -6769,20 +6800,15 @@
     function executeBulkEmail() {
       if (selectedAppIds.size === 0) return;
       const selectedApps = applications.filter(a => selectedAppIds.has(a.id));
-      const validEmails = selectedApps.map(a => a.raw?.email).filter(Boolean);
-      if (validEmails.length === 0) {
+      const rawRecords = selectedApps.map(a => a.raw).filter(Boolean);
+      const validRecords = rawRecords.filter(r => r.email && r.email.includes('@'));
+      
+      if (validRecords.length === 0) {
         alert('None of the selected applications have valid email addresses on record.');
         return;
       }
 
-      const bulkRecord = {
-        email: validEmails.join(', '),
-        first_name_en: `${selectedApps.length} Selected`,
-        last_name_en: `Applicants`,
-        id: `Bulk (${selectedApps.length})`
-      };
-
-      openEmailComposer(bulkRecord);
+      openEmailComposer(validRecords[0], validRecords);
     }
 
     function executeBulkExport() {
@@ -6803,10 +6829,11 @@
       const ids = Array.from(selectedAppIds);
       try {
         if (supabaseClient) {
-          const { error } = await supabaseClient
+          const { data, error } = await supabaseClient
             .from('applications')
             .delete()
-            .in('id', ids);
+            .in('id', ids)
+            .select('id');
 
           if (error) throw error;
         }
@@ -6819,6 +6846,7 @@
         renderTable();
         updateBulkBarUI();
       } catch (err) {
+        console.error('Failed to delete selected applications:', err);
         alert('Failed to delete selected applications: ' + err.message);
       }
     }
