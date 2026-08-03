@@ -1541,6 +1541,7 @@
           <label>Faculty of Choice<span class="req">*</span></label>
           <select id="reg_faculty_choice">
             <option value="Faculty of Medicine" selected>Faculty of Medicine</option>
+            <option value="Faculty of Computer Science">Faculty of Computer Science</option>
           </select>
           <span class="err-msg" id="err_reg_faculty_choice"></span>
         </div>
@@ -1996,7 +1997,8 @@
                 <label>First Choice (Required)<span class="req">*</span></label>
                 <select id="pref1" onchange="onPrefChange(1)">
                   <option value="">-- Select Faculty --</option>
-                  <option>Faculty of Medicine</option>
+                  <option value="Faculty of Medicine">Faculty of Medicine</option>
+                  <option value="Faculty of Computer Science">Faculty of Computer Science</option>
                 </select>
                 <span class="err-msg" id="err_pref1"></span>
               </div>
@@ -2008,7 +2010,8 @@
                 <label>Second Choice (Required)<span class="req">*</span></label>
                 <select id="pref2" onchange="onPrefChange(2)">
                   <option value="">-- Select Faculty --</option>
-                  <option>Faculty of Medicine</option>
+                  <option value="Faculty of Medicine">Faculty of Medicine</option>
+                  <option value="Faculty of Computer Science">Faculty of Computer Science</option>
                 </select>
                 <span class="err-msg" id="err_pref2"></span>
               </div>
@@ -2020,7 +2023,8 @@
                 <label>Third Choice (Optional)</label>
                 <select id="pref3" onchange="onPrefChange(3)">
                   <option value="">-- Optional --</option>
-                  <option>Faculty of Medicine</option>
+                  <option value="Faculty of Medicine">Faculty of Medicine</option>
+                  <option value="Faculty of Computer Science">Faculty of Computer Science</option>
                 </select>
                 <span class="err-msg" id="err_pref3"></span>
               </div>
@@ -5068,6 +5072,27 @@
       clearErr(id); return true;
     }
 
+    // Prefill Program Preferences (Choice 1 set from registration card selection)
+    function prefillMainForm() {
+      const selectedFaculty = (registrationData && registrationData.faculty) ? registrationData.faculty : 'Faculty of Medicine';
+      if (document.getElementById('pref1')) document.getElementById('pref1').value = selectedFaculty;
+      if (document.getElementById('pref2')) document.getElementById('pref2').value = selectedFaculty;
+    }
+
+    // Check words limit in input field
+    function checkWordLimit(id, limit) {
+      const el = document.getElementById(id);
+      if (!el) return true;
+      const val = el.value.trim();
+      if (!val) return true;
+      const wordCount = val.split(/\s+/).length;
+      if (wordCount > limit) {
+        showErr(id, `Cannot exceed ${limit} words`);
+        return false;
+      }
+      return true;
+    }
+
     function validateField(el, key) {
       clearErr(key);
       let v = el.value.trim();
@@ -5126,6 +5151,7 @@
       
       if (type === 'transfer') {
         html += '<option value="Faculty of Medicine">Faculty of Medicine</option>';
+        html += '<option value="Faculty of Computer Science">Faculty of Computer Science</option>';
         transferSection.classList.remove('hidden');
         
         const transFaculty = document.getElementById('transfer_faculty_choice');
@@ -5133,7 +5159,8 @@
           DATA_TRANSFER_FACULTIES.map(f => `<option value="${f}">${f}</option>`).join('');
       } else {
         const allFaculties = [
-          "Faculty of Medicine"
+          "Faculty of Medicine",
+          "Faculty of Computer Science"
         ];
         allFaculties.forEach(f => {
           html += `<option value="${f}">${f}</option>`;
@@ -5150,9 +5177,9 @@
       pref2.innerHTML = html;
       pref3.innerHTML = html;
 
-      if (registrationData) {
-        pref1.value = 'Faculty of Medicine';
-        pref2.value = 'Faculty of Medicine';
+      if (registrationData && registrationData.faculty) {
+        pref1.value = registrationData.faculty;
+        pref2.value = registrationData.faculty;
       }
     }
 
