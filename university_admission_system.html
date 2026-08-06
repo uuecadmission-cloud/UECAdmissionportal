@@ -1547,7 +1547,10 @@
         </div>
 
         <div class="mt24" style="display:flex; justify-content:space-between; align-items:center;">
-          <button class="btn btn-ghost" onclick="showAdmin()" style="font-size:12px;padding:6px 14px;opacity:0.7;" title="Admin Dashboard">Admin ⚙</button>
+          <div>
+            <button class="btn btn-ghost" onclick="showAdmin()" style="font-size:12px;padding:6px 14px;opacity:0.7;" title="Admin Dashboard">Admin ⚙</button>
+            <a href="update-score/" target="_blank" style="font-size:12px; color:var(--gold-dark); margin-left:12px; font-weight:600; text-decoration:none;" title="Update High School Score">Update Score 📊</a>
+          </div>
           <button class="btn btn-primary" onclick="submitRegistrationCard()" style="padding: 12px 30px;">Start Application →</button>
         </div>
       </div>
@@ -2283,6 +2286,7 @@
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-gold" style="font-size:12px;padding:6px 14px" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px;color:rgba(255,255,255,0.85);border-color:rgba(255,255,255,0.4)" onclick="window.open('update-score/','_blank')">Score Portal 📊</button>
         <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px;color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.3)" onclick="showForm()">← Back to Form</button>
         <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px;color:#ff4d4d;border-color:#ff4d4d;" onclick="logoutAdmin()">Logout 🔓</button>
       </div>
