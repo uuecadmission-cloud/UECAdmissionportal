@@ -5963,7 +5963,7 @@
         'nationality', 'national_id', 'passport_no', 'dob', 'gender',
         'mobile', 'email', 'governorate', 'city', 'address_country', 'address_ar',
         'edu_system', 'school_name', 'grad_year', 'score', 'seat_number',
-        'status', 'intake', 'father_name', 'father_mobile', 'father_occupation',
+        'status', 'intake', 'pref1', 'pref2', 'father_name', 'father_mobile', 'father_occupation',
         'mother_name', 'mother_mobile', 'mother_occupation', 'sibling_id',
         'admin_notes'
       ];
@@ -6400,10 +6400,27 @@
           ${intakeHTML}
           ${statusHTML}
           
-          <div class="details-item" style="grid-column: span 2;">
-            <label>Program Choices (Preferences)</label>
-            <span>1st: ${pref1} | 2nd: ${pref2} | 3rd: ${pref3}</span>
-          </div>
+          ${!isEditing ? `
+            <div class="details-item" style="grid-column: span 2;">
+              <label>Program Choices (Preferences)</label>
+              <span>1st: ${pref1} | 2nd: ${pref2} | 3rd: ${pref3}</span>
+            </div>
+          ` : `
+            <div class="details-item">
+              <label>1st Faculty Choice</label>
+              <select id="edit_pref1" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px; height:36px; background:#fff;">
+                <option value="Faculty of Medicine" ${r.pref1 === 'Faculty of Medicine' ? 'selected' : ''}>Faculty of Medicine</option>
+                <option value="Faculty of Computer Science" ${r.pref1 === 'Faculty of Computer Science' ? 'selected' : ''}>Faculty of Computer Science</option>
+              </select>
+            </div>
+            <div class="details-item">
+              <label>2nd Faculty Choice</label>
+              <select id="edit_pref2" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px; height:36px; background:#fff;">
+                <option value="Faculty of Medicine" ${r.pref2 === 'Faculty of Medicine' ? 'selected' : ''}>Faculty of Medicine</option>
+                <option value="Faculty of Computer Science" ${r.pref2 === 'Faculty of Computer Science' ? 'selected' : ''}>Faculty of Computer Science</option>
+              </select>
+            </div>
+          `}
         </div>
 
         <div class="details-section-title">Parents Details</div>
