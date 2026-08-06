@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UEC Admissions — Update High School Score</title>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --navy: #0A1F3C;
+      --navy-light: #162E50;
+      --gold: #C5A358;
+      --gold-dark: #A6843A;
+      --gold-light: #F4EAD2;
+      --bg: #F8FAF7;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --text-light: #94A3B8;
+      --border: #E2E8F0;
+      --border-light: #F1F5F9;
+      --success: #10B981;
+      --success-bg: #D1FAE5;
+      --error: #EF4444;
+      --error-bg: #FEE2E2;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px -5px rgba(10,31,60,0.12);
+      --radius: 12px;
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    /* HEADER */
+    .portal-header {
+      background-color: var(--navy);
+      color: #fff;
+      padding: 24px 20px;
+      text-align: center;
+      border-bottom: 4px solid var(--gold);
+      box-shadow: var(--shadow-md);
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .header-logo img {
+      height: 48px;
+      width: auto;
+      object-fit: contain;
+    }
+    .portal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+    .portal-sub {
+      font-size: 13px;
+      color: var(--gold-light);
+      font-weight: 400;
+      opacity: 0.9;
+    }
+
+    /* MAIN CONTAINER */
+    .main-container {
+      flex: 1;
+      max-width: 680px;
+      width: 92%;
+      margin: 36px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 32px 28px;
+      box-shadow: var(--shadow-lg);
+      transition: var(--transition);
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      color: var(--navy);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    /* FORM ELEMENTS */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+    .input-field {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text-dark);
+      transition: var(--transition);
+      background-color: #fff;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(197, 163, 88, 0.2);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+    .btn-primary {
+      background-color: var(--navy);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background-color: var(--navy-light);
+      transform: translateY(-1px);
+    }
+    .btn-gold {
+      background-color: var(--gold);
+      color: var(--navy);
+    }
+    .btn-gold:hover {
+      background-color: var(--gold-dark);
+      color: #fff;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* STUDENT INFO DISPLAY GRID */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      background-color: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .info-item label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .info-item span {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+
+    /* BADGES */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-gold {
+      background-color: var(--gold-light);
+      color: var(--gold-dark);
+      border: 1px solid var(--gold);
+    }
+    .badge-success {
+      background-color: var(--success-bg);
+      color: #065F46;
+    }
+
+    /* SCORE PROGRESS BAR */
+    .score-progress-wrap {
+      margin-top: 8px;
+    }
+    .score-progress-bar {
+      height: 10px;
+      width: 100%;
+      background-color: #E2E8F0;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .score-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--gold), #10B981);
+      transition: width 0.4s ease;
+    }
+
+    /* ALERT MESSAGES */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert-error {
+      background-color: var(--error-bg);
+      color: #991B1B;
+      border: 1px solid #FCA5A5;
+    }
+    .alert-success {
+      background-color: var(--success-bg);
+      color: #065F46;
+      border: 1px solid #6EE7B7;
+    }
+
+    /* FOOTER */
+    .portal-footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      background-color: #fff;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- PORTAL HEADER -->
+  <header class="portal-header">
+    <div class="header-logo">
+      <img src="../public/white logoooo.png" alt="UEC Logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22><circle cx=%2224%22 cy=%2224%22 r=%2222%22 fill=%22%23C8961E%22/><text x=%2224%22 y=%2231%22 font-family=%22serif%22 font-size=%2220%22 fill=%22%230A1F3C%22 text-anchor=%22middle%22 font-weight=%22bold%22>U</text></svg>'">
+      <div style="text-align:left;">
+        <div class="portal-title">University of East Capital</div>
+        <div class="portal-sub">Admissions Portal — High School Score Update</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="main-container">
+
+    <!-- ERROR BANNER -->
+    <div id="alert-error" class="alert alert-error"></div>
+
+    <!-- STEP 1: APPLICATION SEARCH CARD -->
+    <div id="search-card" class="card">
+      <h2 class="card-title">🔍 Find Your Application</h2>
+      <p class="card-sub">Please enter your Application ID to load your record and update your High School score.</p>
+
+      <form onsubmit="handleSearchApplication(event)">
+        <div class="field">
+          <label for="app_id_input">Application Number / ID <span style="color:var(--error)">*</span></label>
+          <input type="text" id="app_id_input" class="input-field" placeholder="e.g. APP-2026-1731 or 1731" required autocomplete="off">
+          <span style="font-size:11px; color:var(--text-muted)">Tip: You can type just the number (e.g. 1731) and we will automatically format it for you.</span>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+          <button type="submit" id="search-btn" class="btn btn-primary" style="width:100%; height:46px;">
+            Find Application →
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- STEP 2: STUDENT DETAILS & SCORE UPDATE CARD -->
+    <div id="info-card" class="card hidden">
+      <h2 class="card-title">📋 Student Details & Score Update</h2>
+      <p class="card-sub">Review your application info below and enter your updated High School percentage.</p>
+
+      <!-- INFO SUMMARY GRID -->
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Application ID</label>
+          <span id="disp-app-id" style="color:var(--gold-dark); font-family:monospace; font-size:15px;">—</span>
+        </div>
+        <div class="info-item">
+          <label>Student Name (EN)</label>
+          <span id="disp-name-en">—</span>
+        </div>
+        <div class="info-item">
+          <label>Student Name (AR)</label>
+          <span id="disp-name-ar">—</span>
+        </div>
+        <div class="info-item">
+          <label>High School Certificate</label>
+          <span id="disp-edu-system">—</span>
+        </div>
+        <div class="info-item">
+          <label>High School Name</label>
+          <span id="disp-school-name">—</span>
+        </div>
+        <div class="info-item">
+          <label>Program Preference</label>
+          <span id="disp-pref">—</span>
+        </div>
+        <div class="info-item" style="grid-column: span 2; background:#fff; padding:10px 14px; border-radius:6px; border:1px solid var(--border);">
+          <label>Original Score on Record (History)</label>
+          <span id="disp-orig-score" style="color:var(--text-muted); font-size:15px;">—</span>
+        </div>
+      </div>
+
+      <!-- UPDATE SCORE FORM -->
+      <form onsubmit="handleUpdateScore(event)">
+        <div class="field">
+          <label for="new_score_input">Enter Your Updated High School Score (%) <span style="color:var(--error)">*</span></label>
+          <input type="number" id="new_score_input" class="input-field" min="0" max="100" step="0.01" placeholder="e.g. 88.5" required oninput="updateScorePreview(this.value)">
+          
+          <div class="score-progress-wrap" style="margin-top:6px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+              <span>Score Percentage</span>
+              <strong id="preview-percent-val" style="color:var(--navy)">0%</strong>
+            </div>
+            <div class="score-progress-bar">
+              <div id="score-progress-fill" class="score-progress-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:20px;">
+          <button type="button" class="btn" style="background:#F1F5F9; color:var(--text-dark);" onclick="resetToSearch()">← Back</button>
+          <button type="submit" id="update-btn" class="btn btn-gold" style="flex:1; height:46px;">
+            Submit Updated Percentage 🚀
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- STEP 3: SUCCESS CONFIRMATION CARD -->
+    <div id="success-card" class="card hidden" style="text-align:center; padding:40px 32px;">
+      <div style="font-size:56px; margin-bottom:16px;">🎉</div>
+      <h2 class="card-title" style="justify-content:center; color:var(--navy); font-size:24px; margin-bottom:8px;">Score Updated Successfully!</h2>
+      <p style="font-size:15px; color:var(--text-muted); margin-bottom:24px; line-height:1.7;">
+        Thank you, <strong id="success-student-name" style="color:var(--navy)"></strong>!<br>
+        Your High School score has been updated to <strong id="success-new-score" style="color:var(--gold-dark); font-size:18px;"></strong> in UEC Admissions records.
+      </p>
+
+      <div style="background-color:var(--success-bg); border:1px solid #6EE7B7; border-radius:8px; padding:16px; margin-bottom:28px; text-align:left; font-size:13px; color:#065F46;">
+        <strong style="display:block; margin-bottom:4px;">✓ Audit Log Recorded:</strong>
+        Original Score: <span id="success-orig-score" style="font-weight:600;">—</span> | New Score: <span id="success-updated-score" style="font-weight:700;">—</span><br>
+        <span style="font-size:11px; opacity:0.85;">Both records are preserved for administrative review.</span>
+      </div>
+
+      <button class="btn btn-primary" onclick="window.location.reload()" style="padding:12px 32px;">
+        Update Another Application
+      </button>
+    </div>
+
+  </main>
+
+  <!-- PORTAL FOOTER -->
+  <footer class="portal-footer">
+    <p>&copy; 2026 University of East Capital (UEC). All rights reserved.</p>
+    <p style="margin-top:4px; font-size:11px; color:var(--text-light)">Admissions Office Hotline: 17523 | Email: enrol@uec.edu.eg</p>
+  </footer>
+
+  <!-- JAVASCRIPT & SUPABASE INTEGRATION -->
+  <script>
+    const SUPABASE_URL = 'https://uqfnsfzvncayrrspwpgs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZm5zZnp2bmNheXJyc3B3cGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MDEzNTMsImV4cCI6MjA5OTE3NzM1M30.cjIF04Nj5U8jBnCAYBTD5fTNqPbOKybbmErGk41tB1I';
+
+    let currentRecord = null;
+
+    function showError(msg) {
+      const errBox = document.getElementById('alert-error');
+      errBox.textContent = msg;
+      errBox.style.display = 'block';
+    }
+
+    function hideError() {
+      const errBox = document.getElementById('alert-error');
+      errBox.style.display = 'none';
+      errBox.textContent = '';
+    }
+
+    function formatAppIdInput(rawInput) {
+      let trimmed = rawInput.trim();
+      if (!trimmed) return '';
+      if (trimmed.toUpperCase().startsWith('APP-')) return trimmed.toUpperCase();
+      if (/^\d+$/.test(trimmed)) return `APP-2026-${trimmed}`;
+      return trimmed;
+    }
+
+    async function handleSearchApplication(e) {
+      e.preventDefault();
+      hideError();
+
+      const rawInput = document.getElementById('app_id_input').value;
+      const appId = formatAppIdInput(rawInput);
+      if (!appId) {
+        showError('Please enter a valid Application ID.');
+        return;
+      }
+
+      const btn = document.getElementById('search-btn');
+      btn.disabled = true;
+      btn.textContent = 'Searching Application...';
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/applications?id=eq.${encodeURIComponent(appId)}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!res.ok) throw new Error('Could not connect to database server.');
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+          showError(`Application "${appId}" was not found in UEC records. Please verify your Application Number.`);
+          btn.disabled = false;
+          btn.textContent = 'Find Application →';
+          return;
+        }
+
+        currentRecord = data[0];
+        displayStudentInfo(currentRecord);
+
+      } catch (err) {
+        showError('Search failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Find Application →';
+      }
+    }
+
+    function displayStudentInfo(r) {
+      document.getElementById('disp-app-id').textContent = r.id || '—';
+      const nameEn = [r.first_name_en, r.second_name_en, r.third_name_en, r.last_name_en].filter(Boolean).join(' ') || 'Student';
+      const nameAr = [r.first_name_ar, r.second_name_ar, r.third_name_ar, r.last_name_ar].filter(Boolean).join(' ') || '—';
+      document.getElementById('disp-name-en').textContent = nameEn;
+      document.getElementById('disp-name-ar').textContent = nameAr;
+      document.getElementById('disp-edu-system').textContent = r.edu_system || '—';
+      document.getElementById('disp-school-name').textContent = r.school_name || '—';
+      document.getElementById('disp-pref').textContent = `1st: ${r.pref1 || '—'}${r.pref2 ? ` | 2nd: ${r.pref2}` : ''}`;
+      
+      const origScore = (r.score !== null && r.score !== undefined) ? `${r.score}%` : 'Not recorded';
+      const updatedScore = (r.updated_score !== null && r.updated_score !== undefined) ? `${r.updated_score}% (Previously Updated)` : null;
+      document.getElementById('disp-orig-score').textContent = updatedScore || origScore;
+
+      // Show info card, hide search card
+      document.getElementById('search-card').classList.add('hidden');
+      document.getElementById('info-card').classList.remove('hidden');
+    }
+
+    function updateScorePreview(val) {
+      const num = parseFloat(val) || 0;
+      const clamped = Math.min(100, Math.max(0, num));
+      document.getElementById('preview-percent-val').textContent = `${clamped}%`;
+      document.getElementById('score-progress-fill').style.width = `${clamped}%`;
+    }
+
+    function resetToSearch() {
+      hideError();
+      currentRecord = null;
+      document.getElementById('info-card').classList.add('hidden');
+      document.getElementById('search-card').classList.remove('hidden');
+      const btn = document.getElementById('search-btn');
+      btn.disabled = false;
+      btn.textContent = 'Find Application →';
+    }
+
+    async function handleUpdateScore(e) {
+      e.preventDefault();
+      hideError();
+
+      if (!currentRecord) return;
+      const newScoreVal = document.getElementById('new_score_input').value;
+      const newScore = parseFloat(newScoreVal);
+
+      if (isNaN(newScore) || newScore < 0 || newScore > 100) {
+        showError('Please enter a valid percentage between 0% and 100%.');
+        return;
+      }
+
+      const updateBtn = document.getElementById('update-btn');
+      updateBtn.disabled = true;
+      updateBtn.textContent = 'Updating Score...';
+
+      const nowIso = new Date().toISOString();
+      const existingNotes = currentRecord.admin_notes || '';
+      const auditNote = `[Score Update Portal]: Student updated score from ${currentRecord.score}% to ${newScore}% on ${new Date().toLocaleString()}`;
+      const newNotes = existingNotes ? `${existingNotes} | ${auditNote}` : auditNote;
+
+      const patchPayload = {
+        updated_score: newScore,
+        updated_score_at: nowIso,
+        admin_notes: newNotes
+      };
+
+      try {
+        // Attempt update with updated_score column
+        let patchRes = await fetch(`${SUPABASE_URL}/rest/v1/applications?id=eq.${encodeURIComponent(currentRecord.id)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(patchPayload)
+        });
+
+        // Fallback: If updated_score column doesn't exist yet, update admin_notes
+        if (!patchRes.ok) {
+          patchRes = await fetch(`${SUPABASE_URL}/rest/v1/applications?id=eq.${encodeURIComponent(currentRecord.id)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ admin_notes: newNotes })
+          });
+        }
+
+        const nameEn = [currentRecord.first_name_en, currentRecord.last_name_en].filter(Boolean).join(' ') || 'Student';
+        document.getElementById('success-student-name').textContent = nameEn;
+        document.getElementById('success-new-score').textContent = `${newScore}%`;
+        document.getElementById('success-orig-score').textContent = currentRecord.score !== null ? `${currentRecord.score}%` : '—';
+        document.getElementById('success-updated-score').textContent = `${newScore}%`;
+
+        document.getElementById('info-card').classList.add('hidden');
+        document.getElementById('success-card').classList.remove('hidden');
+
+      } catch (err) {
+        showError('Failed to save score update: ' + err.message);
+        updateBtn.disabled = false;
+        updateBtn.textContent = 'Submit Updated Percentage 🚀';
+      }
+    }
+  </script>
+</body>
+</html>
