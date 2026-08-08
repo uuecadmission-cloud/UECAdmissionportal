@@ -2343,6 +2343,13 @@
           <option value="review">Under Review</option>
           <option value="accepted">Accepted</option>
         </select>
+        <select id="filter-payment" onchange="renderTable()">
+          <option value="">All Payment Statuses</option>
+          <option value="Unpaid">Unpaid 🔴</option>
+          <option value="Paid Application Fee">Paid App Fee 🔵</option>
+          <option value="Paid Deposit">Paid Deposit 🟡</option>
+          <option value="Paid First Installment">Paid 1st Installment 🟢</option>
+        </select>
         <select id="filter-sort" onchange="onSortDropdownChange(this.value)" style="font-weight:600; color:var(--navy); border-color:var(--gold);">
           <option value="date-desc">Sort: Date (Newest First) 🗓️</option>
           <option value="date-asc">Sort: Date (Oldest First)</option>
@@ -6354,6 +6361,23 @@
         `;
       }
 
+      let paymentHTML = '';
+      if (!isEditing) {
+        paymentHTML = `<div class="details-item"><label>Payment Status</label><span class="badge" style="${getPaymentBadgeStyle(r.payment_status)} font-weight:700; padding:6px 12px; border-radius:20px; font-size:12px;">${escapeHtml(r.payment_status || 'Unpaid')}</span></div>`;
+      } else {
+        paymentHTML = `
+          <div class="details-item">
+            <label>Payment Status</label>
+            <select id="edit_payment_status" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:4px; height:36px; background:#fff;">
+              <option value="Unpaid" ${(r.payment_status || 'Unpaid') === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
+              <option value="Paid Application Fee" ${r.payment_status === 'Paid Application Fee' ? 'selected' : ''}>Paid Application Fee</option>
+              <option value="Paid Deposit" ${r.payment_status === 'Paid Deposit' ? 'selected' : ''}>Paid Deposit</option>
+              <option value="Paid First Installment" ${r.payment_status === 'Paid First Installment' ? 'selected' : ''}>Paid First Installment</option>
+            </select>
+          </div>
+        `;
+      }
+
       let intakeHTML = '';
       if (!isEditing) {
         intakeHTML = `<div class="details-item"><label>Intake Period</label><span style="text-transform:capitalize">${r.intake || '—'}</span></div>`;
@@ -6410,6 +6434,7 @@
           ${renderField('Seat Number', 'seat_number', r.seat_number)}
           ${intakeHTML}
           ${statusHTML}
+          ${paymentHTML}
           
           ${!isEditing ? `
             <div class="details-item" style="grid-column: span 2;">
@@ -6533,6 +6558,41 @@
       return str;
     }
 
+    function getPaymentBadgeStyle(status) {
+      const s = String(status || 'Unpaid').toLowerCase();
+      if (s.includes('installment') || s.includes('first')) {
+        return 'background:#d1fae5; color:#065f46; border:1px solid #a7f3d0;';
+      }
+      if (s.includes('deposit')) {
+        return 'background:#fef3c7; color:#92400e; border:1px solid #fde68a;';
+      }
+      if (s.includes('fee') || s.includes('paid app')) {
+        return 'background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;';
+      }
+      // default unpaid
+      return 'background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;';
+    }
+
+    async function updateAppPaymentStatus(id, newStatus) {
+      if (!supabaseClient) { alert('Database not connected'); return; }
+      try {
+        const { error } = await supabaseClient
+          .from('applications')
+          .update({ payment_status: newStatus })
+          .eq('id', id);
+        if (error) throw error;
+        
+        const app = applications.find(a => a.id === id);
+        if (app) {
+          app.paymentStatus = newStatus;
+          if (app.raw) app.raw.payment_status = newStatus;
+        }
+        renderTable();
+      } catch (err) {
+        alert('Failed to update payment status: ' + err.message);
+      }
+    }
+
     // ===== ADMIN DELETE APPLICATION FUNCTIONS =====
     let pendingDeleteId = null;
 
@@ -6638,6 +6698,7 @@
           updatedScoreAt: row.updated_score_at,
           edu: row.edu_system,
           status: row.status || 'pending',
+          paymentStatus: row.payment_status || 'Unpaid',
           date: new Date(row.created_at).toLocaleDateString(),
           raw: row
         }));
@@ -6712,6 +6773,7 @@
       let fi = document.getElementById('filter-intake').value;
       let ff = document.getElementById('filter-faculty').value;
       let fs = document.getElementById('filter-status').value;
+      let fp = document.getElementById('filter-payment') ? document.getElementById('filter-payment').value : '';
       let fq = document.getElementById('filter-search').value.toLowerCase();
       let rows = applications.filter(a => {
         if (fi && a.intake !== fi) return false;
@@ -6721,6 +6783,7 @@
           if (normA !== normFF) return false;
         }
         if (fs && a.status !== fs) return false;
+        if (fp && (a.paymentStatus || 'Unpaid') !== fp) return false;
         if (fq && !a.name.toLowerCase().includes(fq) && !a.id.toLowerCase().includes(fq)) return false;
         return true;
       });
@@ -6737,6 +6800,7 @@
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('score')" title="Sort by Score %">Score %${getSortIndicator('score')}</th>
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('edu')" title="Sort by Education System">Edu System${getSortIndicator('edu')}</th>
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('status')" title="Sort by Status">Status${getSortIndicator('status')}</th>
+          <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('payment')" title="Sort by Payment Status">Payment Status${getSortIndicator('payment')}</th>
           <th style="cursor:pointer; user-select:none;" onclick="sortTableByColumn('date')" title="Sort by Submission Date">Date${getSortIndicator('date')}</th>
           <th>Actions</th>
         `;
@@ -6757,6 +6821,9 @@
         } else if (currentSortField === 'status') {
           valA = (a.status || '').toLowerCase();
           valB = (b.status || '').toLowerCase();
+        } else if (currentSortField === 'payment') {
+          valA = (a.paymentStatus || 'Unpaid').toLowerCase();
+          valB = (b.paymentStatus || 'Unpaid').toLowerCase();
         } else if (currentSortField === 'intake') {
           valA = (a.intake || '').toLowerCase();
           valB = (b.intake || '').toLowerCase();
@@ -6778,7 +6845,7 @@
 
       let tbody = document.getElementById('admin-tbody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-light);padding:24px">No applications match the filter criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text-light);padding:24px">No applications match the filter criteria.</td></tr>';
         updateBulkBarUI();
         return;
       }
@@ -6804,6 +6871,14 @@
         <span class="status-badge status-${escapeHtml(a.status)}" style="cursor:pointer" onclick="event.stopPropagation(); toggleAppStatus('${escapeHtml(a.id)}', '${escapeHtml(a.status)}')" title="Click to toggle status">
           ${escapeHtml(a.status)}
         </span>
+      </td>
+      <td onclick="event.stopPropagation()">
+        <select onchange="updateAppPaymentStatus('${escapeHtml(a.id)}', this.value)" style="font-size:11px; padding:3px 8px; border-radius:12px; font-weight:600; cursor:pointer; ${getPaymentBadgeStyle(a.paymentStatus)}">
+          <option value="Unpaid" ${(a.paymentStatus || 'Unpaid') === 'Unpaid' ? 'selected' : ''}>🔴 Unpaid</option>
+          <option value="Paid Application Fee" ${a.paymentStatus === 'Paid Application Fee' ? 'selected' : ''}>🔵 Paid App Fee</option>
+          <option value="Paid Deposit" ${a.paymentStatus === 'Paid Deposit' ? 'selected' : ''}>🟡 Paid Deposit</option>
+          <option value="Paid First Installment" ${a.paymentStatus === 'Paid First Installment' ? 'selected' : ''}>🟢 Paid 1st Installment</option>
+        </select>
       </td>
       <td>${escapeHtml(a.date || '—')}</td>
       <td onclick="event.stopPropagation()">
@@ -6887,6 +6962,7 @@
       let fi = document.getElementById('filter-intake')?.value;
       let ff = document.getElementById('filter-faculty')?.value;
       let fs = document.getElementById('filter-status')?.value;
+      let fp = document.getElementById('filter-payment')?.value;
       let fq = document.getElementById('filter-search')?.value.toLowerCase();
       return applications.filter(a => {
         if (fi && a.intake !== fi) return false;
@@ -6896,6 +6972,7 @@
           if (normA !== normFF) return false;
         }
         if (fs && a.status !== fs) return false;
+        if (fp && (a.paymentStatus || 'Unpaid') !== fp) return false;
         if (fq && !a.name.toLowerCase().includes(fq) && !a.id.toLowerCase().includes(fq)) return false;
         return true;
       });
@@ -7030,7 +7107,7 @@
       const listToExport = targetApps || applications;
       if (!listToExport.length) { alert('No applications to export.'); return; }
       let headers = [
-        'Application ID', 'Status', 'Date',
+        'Application ID', 'Status', 'Payment Status', 'Date',
         'Applicant Type', 'Intake',
         'First Name (EN)', 'Second Name (EN)', 'Third Name (EN)', 'Last Name (EN)',
         'First Name (AR)', 'Second Name (AR)', 'Third Name (AR)', 'Last Name (AR)',
@@ -7052,6 +7129,7 @@
         return [
           getDisplayAppId(r),
           r.status || 'pending',
+          r.payment_status || 'Unpaid',
           new Date(r.created_at || Date.now()).toLocaleDateString(),
           r.applicant_type || '',
           r.intake || '',
