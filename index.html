@@ -6502,6 +6502,28 @@
 
     } // end showApplicationDetails
 
+    function normalizeFacultyName(name) {
+      if (!name) return '—';
+      let str = String(name).trim();
+      let lower = str.toLowerCase();
+      if (lower.includes('computer science') || lower.includes('cs') || lower.includes('information technology')) {
+        return 'Faculty of Computer Science';
+      }
+      if (lower.includes('medicine')) {
+        return 'Faculty of Medicine';
+      }
+      if (lower.includes('physical therapy') || lower.includes('physiotherapy')) {
+        return 'Faculty of Physiotherapy';
+      }
+      if (lower.includes('pharmacy')) {
+        return 'Faculty of Pharmacy';
+      }
+      if (lower.includes('dentistry')) {
+        return 'Faculty of Dentistry';
+      }
+      return str;
+    }
+
     // ===== ADMIN DELETE APPLICATION FUNCTIONS =====
     let pendingDeleteId = null;
 
@@ -6601,7 +6623,7 @@
           displayId: getDisplayAppId(row),
           name: (row.first_name_en || '') + ' ' + (row.last_name_en || ''),
           intake: row.intake,
-          faculty: row.pref1,
+          faculty: normalizeFacultyName(row.pref1),
           score: row.score,
           updatedScore: row.updated_score,
           updatedScoreAt: row.updated_score_at,
@@ -6684,7 +6706,11 @@
       let fq = document.getElementById('filter-search').value.toLowerCase();
       let rows = applications.filter(a => {
         if (fi && a.intake !== fi) return false;
-        if (ff && a.faculty !== ff) return false;
+        if (ff) {
+          let normA = normalizeFacultyName(a.faculty);
+          let normFF = normalizeFacultyName(ff);
+          if (normA !== normFF) return false;
+        }
         if (fs && a.status !== fs) return false;
         if (fq && !a.name.toLowerCase().includes(fq) && !a.id.toLowerCase().includes(fq)) return false;
         return true;
@@ -6726,8 +6752,8 @@
           valA = (a.intake || '').toLowerCase();
           valB = (b.intake || '').toLowerCase();
         } else if (currentSortField === 'faculty') {
-          valA = (a.faculty || '').toLowerCase();
-          valB = (b.faculty || '').toLowerCase();
+          valA = normalizeFacultyName(a.faculty).toLowerCase();
+          valB = normalizeFacultyName(b.faculty).toLowerCase();
         } else if (currentSortField === 'edu') {
           valA = (a.edu || '').toLowerCase();
           valB = (b.edu || '').toLowerCase();
